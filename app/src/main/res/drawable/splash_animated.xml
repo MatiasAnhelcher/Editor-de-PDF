@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?>
+<animated-vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt">
+    <aapt:attr name="android:drawable">
+        <vector
+            android:width="108dp"
+            android:height="108dp"
+            android:viewportWidth="108"
+            android:viewportHeight="108">
+            <group
+                android:name="book"
+                android:pivotX="54"
+                android:pivotY="56"
+                android:scaleX="0.82"
+                android:scaleY="0.82">
+                <path android:fillColor="#33000000" android:pathData="M54,43C46,39 37,38 31,39V75C37,74 46,75 54,79C62,75 71,74 77,75V39C71,38 62,39 54,43Z" />
+                <group
+                    android:name="left"
+                    android:pivotX="54"
+                    android:pivotY="56"
+                    android:scaleX="0.2">
+                    <path android:fillColor="#FFEFE7D4" android:pathData="M54,40C46,36 36,35 30,36V72C36,71 46,72 54,76Z" />
+                    <path android:fillColor="#FFB3B9C6" android:pathData="M35,45.2h14v1.6h-14z M35,51.2h14v1.6h-14z M35,57.2h14v1.6h-14z M35,63.2h10v1.6h-10z" />
+                </group>
+                <group
+                    android:name="right"
+                    android:pivotX="54"
+                    android:pivotY="56"
+                    android:scaleX="0.2">
+                    <path android:fillColor="#FFFAF6EC" android:pathData="M54,40C62,36 72,35 78,36V72C72,71 62,72 54,76Z" />
+                    <path android:fillColor="#FFB3B9C6" android:pathData="M59,57.2h14v1.6h-14z M59,63.2h10v1.6h-10z" />
+                    <group
+                        android:name="highlight"
+                        android:pivotX="58"
+                        android:scaleX="0">
+                        <path android:fillColor="#FFE6B652" android:pathData="M58,48.6h16v5.6h-16z" />
+                    </group>
+                    <path android:fillColor="#FF3A4766" android:pathData="M59,50.6h14v1.6h-14z" />
+                    <group
+                        android:name="ribbon"
+                        android:translateY="-8">
+                        <path
+                            android:name="ribbon_path"
+                            android:fillAlpha="0"
+                            android:fillColor="#FFC8963A"
+                            android:pathData="M69,36.6h5v10.4l-2.5,-2.2l-2.5,2.2z" />
+                    </group>
+                </group>
+            </group>
+        </vector>
+    </aapt:attr>
+
+    <target android:name="book">
+        <aapt:attr name="android:animation">
+            <set>
+                <objectAnimator
+                    android:duration="520"
+                    android:interpolator="@android:interpolator/overshoot"
+                    android:propertyName="scaleX"
+                    android:valueFrom="0.82"
+                    android:valueTo="1"
+                    android:valueType="floatType" />
+                <objectAnimator
+                    android:duration="520"
+                    android:interpolator="@android:interpolator/overshoot"
+                    android:propertyName="scaleY"
+                    android:valueFrom="0.82"
+                    android:valueTo="1"
+                    android:valueType="floatType" />
+            </set>
+        </aapt:attr>
+    </target>
+
+    <target android:name="left">
+        <aapt:attr name="android:animation">
+            <objectAnimator
+                android:duration="420"
+                android:interpolator="@android:interpolator/decelerate_cubic"
+                android:propertyName="scaleX"
+                android:valueFrom="0.2"
+                android:valueTo="1"
+                android:valueType="floatType" />
+        </aapt:attr>
+    </target>
+
+    <target android:name="right">
+        <aapt:attr name="android:animation">
+            <objectAnimator
+                android:duration="420"
+                android:interpolator="@android:interpolator/decelerate_cubic"
+                android:propertyName="scaleX"
+                android:valueFrom="0.2"
+                android:valueTo="1"
+                android:valueType="floatType" />
+        </aapt:attr>
+    </target>
+
+    <target android:name="highlight">
+        <aapt:attr name="android:animation">
+            <objectAnimator
+                android:duration="380"
+                android:interpolator="@android:interpolator/fast_out_slow_in"
+                android:propertyName="scaleX"
+                android:startOffset="420"
+                android:valueFrom="0"
+                android:valueTo="1"
+                android:valueType="floatType" />
+        </aapt:attr>
+    </target>
+
+    <target android:name="ribbon">
+        <aapt:attr name="android:animation">
+            <objectAnimator
+                android:duration="320"
+                android:interpolator="@android:interpolator/decelerate_quad"
+                android:propertyName="translateY"
+                android:startOffset="560"
+                android:valueFrom="-8"
+                android:valueTo="0"
+                android:valueType="floatType" />
+        </aapt:attr>
+    </target>
+
+    <target android:name="ribbon_path">
+        <aapt:attr name="android:animation">
+            <objectAnimator
+                android:duration="200"
+                android:propertyName="fillAlpha"
+                android:startOffset="560"
+                android:valueFrom="0"
+                android:valueTo="1"
+                android:valueType="floatType" />
+        </aapt:attr>
+    </target>
+</animated-vector>

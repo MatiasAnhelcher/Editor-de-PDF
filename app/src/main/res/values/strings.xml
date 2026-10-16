@@ -135,4 +135,21 @@
     <string name="empty_title">Tu biblioteca está vacía</string>
     <string name="page_of">Página %1$d de %2$d · %3$s</string>
     <string name="page_short">Pág. %1$d de %2$d</string>
+    <string name="greeting_morning">Buenos días</string>
+    <string name="greeting_afternoon">Buenas tardes</string>
+    <string name="greeting_night">Buenas noches</string>
+    <string name="today">Hoy</string>
+    <string name="streak_days">días seguidos</string>
+    <string name="streak_one_day">día seguido</string>
+    <string name="goal_value">%1$d/%2$d</string>
+    <string name="goal_unit">minutos</string>
+    <string name="goal_change">Cambiar meta diaria</string>
+    <string name="goal_title">Meta diaria de estudio</string>
+    <string name="goal_option">%1$d minutos</string>
+    <string name="today_detail_pending">Te faltan %1$d minutos para la meta. Llevas %2$d páginas leídas hoy.</string>
+    <string name="today_detail_done">¡Meta cumplida! Llevas %1$d páginas leídas hoy.</string>
+    <string name="today_detail_start">Empieza hoy: %1$d minutos de estudio mantienen tu racha.</string>
+    <string name="week_chart">Minutos de estudio de los últimos 7 días</string>
+    <string name="goal_reached">¡Meta del día cumplida! Buen trabajo.</string>
+    <string name="goal_reached_streak">¡Meta del día cumplida! Llevas %1$d días seguidos.</string>
 </resources>

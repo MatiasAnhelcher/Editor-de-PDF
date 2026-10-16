@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Paleta propia "tinta y papel": azul tinta, dorado y fondos cálidos. -->
-    <style name="Theme.EditorPDF" parent="Theme.Material3.DayNight.NoActionBar">
+    <style name="Base.Theme.EditorPDF" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="colorPrimary">@color/c_primary</item>
         <item name="colorOnPrimary">@color/c_on_primary</item>
         <item name="colorPrimaryContainer">@color/c_primary_container</item>
@@ -33,6 +33,8 @@
         <item name="shapeAppearanceCornerLarge">@style/Shape.EditorPDF.Large</item>
         <item name="materialAlertDialogTheme">@style/ThemeOverlay.EditorPDF.Dialog</item>
     </style>
+
+    <style name="Theme.EditorPDF" parent="Base.Theme.EditorPDF" />
 
     <style name="Shape.EditorPDF.Medium" parent="">
         <item name="cornerFamily">rounded</item>
