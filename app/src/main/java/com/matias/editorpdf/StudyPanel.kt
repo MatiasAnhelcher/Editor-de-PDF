@@ -143,9 +143,9 @@ class StudyPanel(
         if (cached != null) {
             setRows(
                 cached.map { e ->
-                    Row(e.title, if (e.page >= 0) page(e.page) else "", null, e.level) {
+                    Row(e.title, if (e.page >= 0) page(e.page) else "", null, e.level, onClick = {
                         if (e.page >= 0) host.goToPage(e.page)
-                    }
+                    })
                 },
                 if (cached.isEmpty()) activity.getString(R.string.no_outline) else null,
             )
