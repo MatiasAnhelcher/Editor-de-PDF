@@ -6,13 +6,15 @@ import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.RectF
 import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.InsetDrawable
+import android.graphics.drawable.LayerDrawable
 import android.net.Uri
 import android.os.Bundle
 import android.text.InputType
 import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
-import android.widget.CheckBox
+import android.widget.CompoundButton
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.LinearLayout
@@ -27,7 +29,8 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.appbar.MaterialToolbar
-import com.google.android.material.button.MaterialButtonToggleGroup
+import com.google.android.material.button.MaterialButton
+import com.google.android.material.color.MaterialColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.slider.Slider
 import com.google.android.material.snackbar.Snackbar
@@ -62,15 +65,15 @@ class EditorActivity : AppCompatActivity(), PdfDocumentView.Listener {
     private lateinit var toolbar: MaterialToolbar
     private lateinit var progress: View
     private lateinit var pageIndicator: TextView
-    private lateinit var toolGroup: MaterialButtonToggleGroup
+    private lateinit var toolGroup: LinearLayout
     private lateinit var optionsPanel: View
     private lateinit var swatches: LinearLayout
     private lateinit var widthSlider: Slider
     private lateinit var widthLabel: TextView
-    private lateinit var straightCheck: CheckBox
+    private lateinit var straightCheck: CompoundButton
     private lateinit var toolPanel: View
     private lateinit var colorMeaning: TextView
-    private lateinit var snapCheck: CheckBox
+    private lateinit var snapCheck: CompoundButton
     private lateinit var lassoHint: TextView
     private lateinit var selectionDelete: View
     private lateinit var reviewBar: View
@@ -208,7 +211,10 @@ class EditorActivity : AppCompatActivity(), PdfDocumentView.Listener {
                 pageSizes = loaded.sizes
                 docName = loaded.name
                 toolbar.title = loaded.name
-                recents.touch(s.uri, loaded.name)
+                recents.touch(s.uri, loaded.name, loaded.sizes.size)
+                loaded.sizes.firstOrNull()?.let { first ->
+                    ioScope.launch { runCatching { Covers.ensure(applicationContext, s.uri.toString(), loaded.renderer, first.width, first.height) } }
+                }
                 store.load(loaded.annotations.annotations, dirty = loaded.annotations.fromDraft)
                 pdfView.setDocument(loaded.renderer, loaded.sizes, recents.lastPage(s.uri))
                 if (loaded.annotations.fromDraft) {
@@ -567,9 +573,17 @@ class EditorActivity : AppCompatActivity(), PdfDocumentView.Listener {
 
     private fun setupTools() {
         val initial = settings.tool
-        toolButtons.entries.firstOrNull { it.value == initial }?.let { toolGroup.check(it.key) }
-        toolGroup.addOnButtonCheckedListener { _, id, checked ->
-            if (checked) toolButtons[id]?.let { selectTool(it) }
+        for ((id, tool) in toolButtons) {
+            findViewById<View>(id).setOnClickListener {
+                if (pdfView.tool == tool) {
+                    // Tocar otra vez la herramienta elegida muestra u oculta sus opciones.
+                    optionsHidden = !optionsHidden
+                    refreshOptions()
+                } else {
+                    optionsHidden = false
+                    selectTool(tool)
+                }
+            }
         }
         straightCheck.isChecked = settings.straightHighlighter
         straightCheck.setOnCheckedChangeListener { _, checked -> settings.straightHighlighter = checked }
@@ -584,33 +598,71 @@ class EditorActivity : AppCompatActivity(), PdfDocumentView.Listener {
         selectTool(initial)
     }
 
+    private var optionsHidden = false
+
     private fun selectTool(tool: Tool) {
         pdfView.tool = tool
         settings.tool = tool
         refreshOptions()
     }
 
+    /** El dock marca la herramienta elegida y pinta lápiz, resaltador y subrayado con su color actual. */
+    private fun refreshToolButtons() {
+        val selectedBg = MaterialColors.getColor(toolGroup, com.google.android.material.R.attr.colorSecondaryContainer)
+        val normalTint = MaterialColors.getColor(toolGroup, com.google.android.material.R.attr.colorOnSurfaceVariant)
+        val selectedTint = MaterialColors.getColor(toolGroup, com.google.android.material.R.attr.colorOnSecondaryContainer)
+        for ((id, tool) in toolButtons) {
+            val b = findViewById<MaterialButton>(id)
+            val on = pdfView.tool == tool
+            b.backgroundTintList = ColorStateList.valueOf(if (on) selectedBg else Color.TRANSPARENT)
+            val inkColor = when (tool) {
+                Tool.PEN, Tool.HIGHLIGHTER, Tool.UNDERLINE -> darkenForIcon(settings.color(tool))
+                else -> null
+            }
+            b.iconTint = ColorStateList.valueOf(inkColor ?: if (on) selectedTint else normalTint)
+        }
+    }
+
+    /** Los colores claros del resaltador se oscurecen un poco para que el ícono se lea bien. */
+    private fun darkenForIcon(color: Int): Int {
+        val hsv = FloatArray(3)
+        Color.colorToHSV(color or 0xFF000000.toInt(), hsv)
+        if (hsv[1] > 0.15f) hsv[2] = hsv[2].coerceAtMost(0.82f)
+        return Color.HSVToColor(hsv)
+    }
+
     private fun refreshOptions() {
         val tool = pdfView.tool
-        val hasOptions = tool != Tool.HAND && tool != Tool.ERASER
+        refreshToolButtons()
+        val hasOptions = tool != Tool.HAND && tool != Tool.ERASER && !(optionsHidden && tool != Tool.LASSO)
         optionsPanel.isVisible = hasOptions
         if (!hasOptions) return
 
         swatches.removeAllViews()
         val lasso = tool == Tool.LASSO
         val selected = if (lasso) -1 else settings.color(tool)
-        val size = (30 * resources.displayMetrics.density).roundToInt()
-        val gap = (6 * resources.displayMetrics.density).roundToInt()
+        val size = (34 * resources.displayMetrics.density).roundToInt()
+        val gap = (4 * resources.displayMetrics.density).roundToInt()
         for (c in Settings.palette(tool)) {
             val v = View(this)
-            v.background = GradientDrawable().apply {
+            val d = resources.displayMetrics.density
+            val dot = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
-                setColor(c)
-                if (c == selected) {
-                    setStroke((3 * resources.displayMetrics.density).roundToInt(), Color.parseColor("#1E88E5"))
-                } else {
-                    setStroke((1 * resources.displayMetrics.density).roundToInt(), Color.parseColor("#55000000"))
+                setColor(c or 0xFF000000.toInt())
+                setStroke((1 * d).roundToInt(), 0x22000000)
+            }
+            v.background = if (c == selected) {
+                val ring = GradientDrawable().apply {
+                    shape = GradientDrawable.OVAL
+                    setColor(Color.TRANSPARENT)
+                    setStroke((2 * d).roundToInt(), MaterialColors.getColor(v, com.google.android.material.R.attr.colorPrimary, Color.BLACK))
                 }
+                LayerDrawable(arrayOf(ring, dot)).apply {
+                    val inset = (5 * d).roundToInt()
+                    setLayerInset(1, inset, inset, inset, inset)
+                }
+            } else {
+                InsetDrawable(dot, (2 * d).roundToInt())
             }
             v.contentDescription = getString(R.string.color)
             v.setOnClickListener {
@@ -642,6 +694,7 @@ class EditorActivity : AppCompatActivity(), PdfDocumentView.Listener {
         }
         widthLabel.isVisible = !lasso
         widthSlider.isVisible = !lasso
+        findViewById<View>(R.id.options_divider).isVisible = !lasso
         if (lasso) {
             straightCheck.isVisible = false
             return

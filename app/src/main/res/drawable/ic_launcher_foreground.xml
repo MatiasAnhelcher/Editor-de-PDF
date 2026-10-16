@@ -1,10 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
-    <path android:fillColor="#FFFFFF" android:pathData="M34,26h30l12,12v44h-42z" />
-    <path android:fillColor="#CBD5E1" android:pathData="M64,26v12h12z" />
-    <path android:fillColor="#94A3B8" android:pathData="M40,44h26v3h-26z" />
-    <path android:fillColor="#FDE047" android:pathData="M38,53h32v8h-32z" />
-    <path android:fillColor="#475569" android:pathData="M40,55.5h28v3h-28z" />
-    <path android:fillColor="#94A3B8" android:pathData="M40,66h30v3h-30z" />
-    <path android:fillColor="#94A3B8" android:pathData="M40,73h20v3h-20z" />
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Sombra suave del libro -->
+    <path android:fillColor="#33000000" android:pathData="M54,43C46,39 37,38 31,39V75C37,74 46,75 54,79C62,75 71,74 77,75V39C71,38 62,39 54,43Z" />
+    <!-- Página izquierda -->
+    <path android:fillColor="#FFEFE7D4" android:pathData="M54,40C46,36 36,35 30,36V72C36,71 46,72 54,76Z" />
+    <!-- Página derecha -->
+    <path android:fillColor="#FFFAF6EC" android:pathData="M54,40C62,36 72,35 78,36V72C72,71 62,72 54,76Z" />
+    <!-- Renglones -->
+    <path android:fillColor="#FFB3B9C6" android:pathData="M35,45.2h14v1.6h-14z M35,51.2h14v1.6h-14z M35,57.2h14v1.6h-14z M35,63.2h10v1.6h-10z" />
+    <!-- Resaltado dorado -->
+    <path android:fillColor="#FFE6B652" android:pathData="M58,48.6h16v5.6h-16z" />
+    <path android:fillColor="#FF3A4766" android:pathData="M59,50.6h14v1.6h-14z" />
+    <path android:fillColor="#FFB3B9C6" android:pathData="M59,57.2h14v1.6h-14z M59,63.2h10v1.6h-10z" />
+    <!-- Cinta marcapáginas -->
+    <path android:fillColor="#FFC8963A" android:pathData="M69,36.6h5v10.4l-2.5,-2.2l-2.5,2.2z" />
 </vector>

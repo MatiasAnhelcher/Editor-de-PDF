@@ -8,12 +8,18 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import android.graphics.Bitmap
+import android.util.LruCache
+import android.widget.ImageView
+import com.matias.editorpdf.view.AspectImageView
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
-import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -46,7 +52,8 @@ class MainActivity : AppCompatActivity() {
         recents = Recents(this)
         list = findViewById(R.id.recent_list)
         empty = findViewById(R.id.empty)
-        list.layoutManager = LinearLayoutManager(this)
+        val widthDp = resources.configuration.screenWidthDp
+        list.layoutManager = GridLayoutManager(this, (widthDp / 190).coerceIn(2, 8))
         list.adapter = adapter
         findViewById<View>(R.id.open_button).setOnClickListener {
             openLauncher.launch(arrayOf("application/pdf"))
@@ -187,10 +194,73 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private val covers = object : LruCache<String, Bitmap>(24 * 1024 * 1024) {
+        override fun sizeOf(key: String, value: Bitmap) = value.byteCount
+    }
+
     private fun refresh() {
-        adapter.items = recents.list()
+        val all = recents.list()
+        val first = all.firstOrNull()
+        adapter.items = all.drop(1)
         adapter.notifyDataSetChanged()
-        empty.isVisible = adapter.items.isEmpty()
+        empty.isVisible = all.isEmpty()
+        findViewById<View>(R.id.recent_header).isVisible = adapter.items.isNotEmpty()
+        val card = findViewById<View>(R.id.continue_card)
+        card.isVisible = first != null
+        if (first != null) {
+            findViewById<TextView>(R.id.continue_title).text = first.name.ifBlank { getString(R.string.untitled) }
+            findViewById<TextView>(R.id.continue_meta).text = describe(first)
+            findViewById<com.google.android.material.progressindicator.LinearProgressIndicator>(R.id.continue_progress).apply {
+                isVisible = first.pages > 0
+                progress = progressOf(first)
+            }
+            loadCover(findViewById<AspectImageView>(R.id.continue_cover), first.uri)
+            val go = View.OnClickListener { open(Uri.parse(first.uri)) }
+            card.setOnClickListener(go)
+            card.setOnLongClickListener {
+                confirmRemove(first)
+                true
+            }
+            findViewById<View>(R.id.continue_button).setOnClickListener(go)
+        }
+    }
+
+    private fun confirmRemove(item: RecentDoc) {
+        MaterialAlertDialogBuilder(this)
+            .setTitle(item.name)
+            .setMessage(R.string.remove_recent_message)
+            .setPositiveButton(R.string.remove) { _, _ ->
+                recents.remove(item.uri)
+                Covers.delete(this, item.uri)
+                covers.remove(item.uri)
+                refresh()
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun describe(d: RecentDoc): String {
+        val ago = DateUtils.getRelativeTimeSpanString(d.time, System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS).toString()
+        return if (d.pages > 0) getString(R.string.page_of, d.page + 1, d.pages, ago)
+        else getString(R.string.recent_subtitle, d.page + 1, ago)
+    }
+
+    private fun progressOf(d: RecentDoc): Int =
+        if (d.pages <= 1) 0 else ((d.page.toFloat() / (d.pages - 1)) * 1000).toInt().coerceIn(0, 1000)
+
+    private fun loadCover(view: ImageView, uri: String) {
+        view.tag = uri
+        val cached = covers.get(uri)
+        if (cached != null) {
+            view.setImageBitmap(cached)
+            return
+        }
+        view.setImageDrawable(null)
+        lifecycleScope.launch {
+            val bmp = withContext(Dispatchers.IO) { Covers.load(applicationContext, uri) } ?: return@launch
+            covers.put(uri, bmp)
+            if (view.tag == uri) view.setImageBitmap(bmp)
+        }
     }
 
     private fun open(uri: Uri) {
@@ -208,6 +278,8 @@ class MainActivity : AppCompatActivity() {
         inner class Holder(v: View) : RecyclerView.ViewHolder(v) {
             val title: TextView = v.findViewById(R.id.title)
             val subtitle: TextView = v.findViewById(R.id.subtitle)
+            val cover: AspectImageView = v.findViewById(R.id.cover)
+            val progress: com.google.android.material.progressindicator.LinearProgressIndicator = v.findViewById(R.id.progress)
         }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) =
@@ -218,22 +290,13 @@ class MainActivity : AppCompatActivity() {
         override fun onBindViewHolder(holder: Holder, position: Int) {
             val item = items[position]
             holder.title.text = item.name.ifBlank { getString(R.string.untitled) }
-            holder.subtitle.text = getString(
-                R.string.recent_subtitle,
-                item.page + 1,
-                DateUtils.getRelativeTimeSpanString(item.time, System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS),
-            )
+            holder.subtitle.text = describe(item)
+            holder.progress.isVisible = item.pages > 0
+            holder.progress.progress = progressOf(item)
+            loadCover(holder.cover, item.uri)
             holder.itemView.setOnClickListener { open(Uri.parse(item.uri)) }
             holder.itemView.setOnLongClickListener {
-                MaterialAlertDialogBuilder(this@MainActivity)
-                    .setTitle(item.name)
-                    .setMessage(R.string.remove_recent_message)
-                    .setPositiveButton(R.string.remove) { _, _ ->
-                        recents.remove(item.uri)
-                        refresh()
-                    }
-                    .setNegativeButton(android.R.string.cancel, null)
-                    .show()
+                confirmRemove(item)
                 true
             }
         }

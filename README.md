@@ -14,15 +14,18 @@ Cada cambio en `main` publica una versión nueva. Los APK de otras ramas quedan 
 
 ## Cómo se usa
 
+La pantalla de inicio es tu **biblioteca**: muestra la portada de cada PDF, cuánto llevas leído y un acceso para seguir donde quedaste. En el documento, las herramientas están en una barra flotante abajo; el ícono de lápiz, resaltador y subrayado toma el color elegido, y tocar otra vez la herramienta elegida oculta o muestra sus opciones.
+
+
 | Herramienta | Qué hace |
 |---|---|
-| ✋ Mover | Desplazarse y hacer zoom (también con el S Pen) |
-| ✏️ Lápiz | Escritura a mano, sensible a la presión del S Pen |
-| 🖍️ Resaltar | Resaltador transparente. Con «Trazo recto» y «Ajustar al renglón» se acomoda solo a la altura del renglón y a las palabras que tocaste, sin tapar el texto (también en PDFs escaneados) |
-| 〰️ Subrayar | Línea recta que se ubica justo debajo del renglón |
-| 🔤 Texto | Toca la página para escribir una nota. Toca una nota para editarla o borrarla; arrástrala para moverla |
-| 🧽 Borrar | Borra trazos y notas completas al pasar por encima |
-| ➰ Lazo | Rodea trazos y notas para seleccionarlos: arrástralos para moverlos, toca un color para cambiarlo o bórralos |
+| Mover | Desplazarse y hacer zoom (también con el S Pen) |
+| Lápiz | Escritura a mano, sensible a la presión del S Pen |
+| Resaltador | Resaltador transparente. Con «Trazo recto» y «Ajustar al renglón» se acomoda solo a la altura del renglón y a las palabras que tocaste, sin tapar el texto (también en PDFs escaneados) |
+| Subrayado | Línea recta que se ubica justo debajo del renglón |
+| Texto | Toca la página para escribir una nota. Toca una nota para editarla o borrarla; arrástrala para moverla |
+| Borrador | Borra trazos y notas completas al pasar por encima |
+| Lazo | Rodea trazos y notas para seleccionarlos: arrástralos para moverlos, toca un color para cambiarlo o bórralos |
 
 ### Para estudiar
 

@@ -75,7 +75,7 @@ class Settings(context: Context) {
     }
 }
 
-data class RecentDoc(val uri: String, val name: String, val time: Long, val page: Int)
+data class RecentDoc(val uri: String, val name: String, val time: Long, val page: Int, val pages: Int = 0)
 
 /** Lista de PDFs abiertos recientemente, con la última página leída. */
 class Recents(context: Context) {
@@ -85,13 +85,13 @@ class Recents(context: Context) {
         val arr = JSONArray(prefs.getString("items", "[]"))
         (0 until arr.length()).map {
             val o = arr.getJSONObject(it)
-            RecentDoc(o.getString("uri"), o.optString("name"), o.optLong("time"), o.optInt("page"))
+            RecentDoc(o.getString("uri"), o.optString("name"), o.optLong("time"), o.optInt("page"), o.optInt("pages"))
         }
     }.getOrDefault(emptyList())
 
-    fun touch(uri: Uri, name: String) {
+    fun touch(uri: Uri, name: String, pages: Int) {
         val old = find(uri)
-        save(listOf(RecentDoc(uri.toString(), name, System.currentTimeMillis(), old?.page ?: 0)) + others(uri))
+        save(listOf(RecentDoc(uri.toString(), name, System.currentTimeMillis(), old?.page ?: 0, pages)) + others(uri))
     }
 
     fun setPage(uri: Uri, page: Int) {
@@ -109,7 +109,7 @@ class Recents(context: Context) {
     private fun save(items: List<RecentDoc>) {
         val arr = JSONArray()
         items.take(40).forEach {
-            arr.put(JSONObject().put("uri", it.uri).put("name", it.name).put("time", it.time).put("page", it.page))
+            arr.put(JSONObject().put("uri", it.uri).put("name", it.name).put("time", it.time).put("page", it.page).put("pages", it.pages))
         }
         prefs.edit().putString("items", arr.toString()).apply()
     }

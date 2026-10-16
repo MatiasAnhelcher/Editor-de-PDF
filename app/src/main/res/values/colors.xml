@@ -1,5 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="brand">#1E3A8A</color>
-    <color name="launcher_bg">#1E3A8A</color>
+    <color name="c_primary">#23345C</color>
+    <color name="c_on_primary">#FFFFFF</color>
+    <color name="c_primary_container">#DCE3F5</color>
+    <color name="c_on_primary_container">#0F1B36</color>
+    <color name="c_secondary">#8A6A2F</color>
+    <color name="c_on_secondary">#FFFFFF</color>
+    <color name="c_secondary_container">#EFE3C8</color>
+    <color name="c_on_secondary_container">#2E2108</color>
+    <color name="c_tertiary">#4F6B5A</color>
+    <color name="c_on_tertiary">#FFFFFF</color>
+    <color name="c_tertiary_container">#D3E6D9</color>
+    <color name="c_on_tertiary_container">#0F2418</color>
+    <color name="c_surface">#FAF8F3</color>
+    <color name="c_on_surface">#1C1B19</color>
+    <color name="c_surface_variant">#E9E5DC</color>
+    <color name="c_on_surface_variant">#4A4740</color>
+    <color name="c_surface_lowest">#FFFFFF</color>
+    <color name="c_surface_low">#F5F2EB</color>
+    <color name="c_surface_container">#EFEBE3</color>
+    <color name="c_surface_high">#E9E5DC</color>
+    <color name="c_surface_highest">#E3DED4</color>
+    <color name="c_outline">#7B776E</color>
+    <color name="c_outline_variant">#CFCAC0</color>
+    <color name="c_canvas">#E8E4DB</color>
+    <color name="brand">#23345C</color>
 </resources>
