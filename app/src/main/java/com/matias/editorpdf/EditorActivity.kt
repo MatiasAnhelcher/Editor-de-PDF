@@ -42,6 +42,8 @@ import com.matias.editorpdf.model.TextAnnotation
 import com.matias.editorpdf.model.Tool
 import com.matias.editorpdf.pdf.DocumentSession
 import com.matias.editorpdf.pdf.ImageSnap
+import com.matias.editorpdf.pdf.PageOp
+import com.matias.editorpdf.pdf.PageOps
 import com.matias.editorpdf.pdf.PageRenderer
 import com.matias.editorpdf.pdf.TextSnap
 import com.matias.editorpdf.view.AnnotationPainter
@@ -49,6 +51,7 @@ import com.matias.editorpdf.pdf.SearchHit
 import com.matias.editorpdf.pdf.StudyText
 import com.matias.editorpdf.pdf.WriteDeniedException
 import com.matias.editorpdf.view.PdfDocumentView
+import com.matias.editorpdf.view.SignaturePadView
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -396,6 +399,126 @@ class EditorActivity : AppCompatActivity(), PdfDocumentView.Listener {
             .show()
     }
 
+    // --- Organizar páginas y firma ------------------------------------------------------------
+
+    private fun confirmPageOp(op: PageOp) {
+        if (op !is PageOp.Delete) return pageOp(op)
+        MaterialAlertDialogBuilder(this)
+            .setTitle(getString(R.string.page_delete_title, op.page + 1))
+            .setMessage(R.string.page_delete_message)
+            .setPositiveButton(R.string.page_delete) { _, _ -> pageOp(op) }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    /** Gira, agrega o borra una página: cambia el PDF, acomoda las anotaciones y lo guarda enseguida. */
+    private fun pageOp(op: PageOp) {
+        val s = session ?: return
+        if (saving || renderer == null) return
+        if (op is PageOp.Delete && pageCount <= 1) {
+            Toast.makeText(this, R.string.page_delete_last, Toast.LENGTH_LONG).show()
+            return
+        }
+        stopReading()
+        pdfView.onPlace = null
+        val old = store.all()
+        val oldSizes = pageSizes
+        val keepPage = when (op) {
+            is PageOp.InsertBlank -> op.page + 1
+            is PageOp.Delete -> (op.page).coerceAtMost(pageCount - 2)
+            is PageOp.Rotate -> op.page
+        }
+        saving = true
+        progress.isVisible = true
+        val oldText = studyText
+        studyText = null
+        lifecycleScope.launch {
+            val result = runCatching {
+                withContext(Dispatchers.IO) {
+                    runCatching { oldText?.close() }
+                    PageOps.apply(s.workFile, op)
+                    val r = PageRenderer(s.workFile)
+                    try {
+                        r to r.readPageSizes()
+                    } catch (e: Throwable) {
+                        r.close()
+                        throw e
+                    }
+                }
+            }
+            saving = false
+            progress.isVisible = false
+            result.onSuccess { (r, sizes) ->
+                if (isDestroyed) {
+                    r.close()
+                    return@onSuccess
+                }
+                renderer?.close()
+                renderer = r
+                studyText = StudyText(s.workFile)
+                pageCount = sizes.size
+                pageSizes = sizes
+                store.load(PageOps.remap(old, op, oldSizes), dirty = true)
+                pdfView.setDocument(r, sizes, keepPage)
+                studyPanel.pagesChanged()
+                save()
+            }.onFailure { e ->
+                studyText = StudyText(s.workFile)
+                MaterialAlertDialogBuilder(this@EditorActivity)
+                    .setTitle(R.string.error_title)
+                    .setMessage(getString(R.string.error_pages, e.message ?: e.javaClass.simpleName))
+                    .setPositiveButton(android.R.string.ok, null)
+                    .show()
+            }
+        }
+    }
+
+    private fun startSignature() {
+        if (renderer == null) return
+        val saved = Signature.load(this)
+        if (saved == null) drawSignature() else placeSignature(saved)
+    }
+
+    private fun placeSignature(sig: Signature) {
+        val color = 0xFF1A237E.toInt()
+        pdfView.onPlace = { page, x, y ->
+            // Ancho de una firma común; si es muy alta, se achica para que no ocupe media hoja.
+            val width = minOf(150f, 70f * sig.aspect)
+            store.commit(AnnotationStore.Change(emptyList(), sig.place(page, x, y, width, color)))
+        }
+        Snackbar.make(pdfView, R.string.signature_place, Snackbar.LENGTH_LONG)
+            .setAction(R.string.signature_redraw) {
+                pdfView.onPlace = null
+                drawSignature()
+            }
+            .show()
+    }
+
+    private fun drawSignature() {
+        val dp = resources.displayMetrics.density
+        val pad = SignaturePadView(this)
+        val frame = FrameLayout(this).apply {
+            setPadding((20 * dp).toInt(), (8 * dp).toInt(), (20 * dp).toInt(), 0)
+            addView(pad, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, (220 * dp).toInt()))
+        }
+        val dialog = MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.signature_title)
+            .setView(frame)
+            .setPositiveButton(R.string.signature_use, null)
+            .setNeutralButton(R.string.signature_clear, null)
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+        val use = dialog.getButton(android.content.DialogInterface.BUTTON_POSITIVE)
+        use.isEnabled = false
+        pad.onChanged = { use.isEnabled = !pad.isEmpty }
+        dialog.getButton(android.content.DialogInterface.BUTTON_NEUTRAL).setOnClickListener { pad.clear() }
+        use.setOnClickListener {
+            val sig = Signature.save(this, pad.strokes.toList()) ?: return@setOnClickListener
+            dialog.dismiss()
+            placeSignature(sig)
+        }
+    }
+
     // --- Barra superior ----------------------------------------------------------------------
 
     private fun setupToolbar() {
@@ -420,6 +543,10 @@ class EditorActivity : AppCompatActivity(), PdfDocumentView.Listener {
                 R.id.action_reading_mode -> chooseReadingMode()
                 R.id.action_read_aloud -> if (readingPage >= 0) stopReading() else startReading(pdfView.currentPage)
                 R.id.action_share -> share()
+                R.id.action_sign -> startSignature()
+                R.id.action_page_rotate -> if (renderer != null) confirmPageOp(PageOp.Rotate(pdfView.currentPage))
+                R.id.action_page_insert -> if (renderer != null) confirmPageOp(PageOp.InsertBlank(pdfView.currentPage))
+                R.id.action_page_delete -> if (renderer != null) confirmPageOp(PageOp.Delete(pdfView.currentPage))
                 R.id.action_finger -> {
                     settings.stylusOnly = !settings.stylusOnly
                     item.isChecked = !settings.stylusOnly

@@ -206,4 +206,19 @@
     <string name="add_note">Nueva nota</string>
     <string name="sticky_note">Nota</string>
     <string name="note_hint">Escribe tu comentario…</string>
+    <string name="sign">Firmar</string>
+    <string name="signature_title">Tu firma</string>
+    <string name="signature_use">Usar</string>
+    <string name="signature_clear">Borrar</string>
+    <string name="signature_place">Toca donde quieres poner la firma</string>
+    <string name="signature_redraw">Dibujar otra</string>
+    <string name="organize_pages">Organizar páginas</string>
+    <string name="page_rotate">Girar esta página</string>
+    <string name="page_insert">Agregar página en blanco después</string>
+    <string name="page_delete_current">Eliminar esta página</string>
+    <string name="page_delete">Eliminar</string>
+    <string name="page_delete_title">¿Eliminar la página %1$d?</string>
+    <string name="page_delete_message">Se borra del PDF junto con sus anotaciones y el archivo se guarda enseguida.</string>
+    <string name="page_delete_last">No se puede eliminar la única página del documento.</string>
+    <string name="error_pages">No se pudieron cambiar las páginas: %1$s</string>
 </resources>
