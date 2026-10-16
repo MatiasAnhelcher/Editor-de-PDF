@@ -65,6 +65,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.FileNotFoundException
 import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.roundToInt
 
 class EditorActivity : AppCompatActivity(), PdfDocumentView.Listener {
@@ -821,7 +822,7 @@ class EditorActivity : AppCompatActivity(), PdfDocumentView.Listener {
         }
     }
 
-    override fun onTextRequested(page: Int, x: Float, y: Float, existing: TextAnnotation?) {
+    override fun onTextRequested(page: Int, x: Float, y: Float, existing: TextAnnotation?, boxWidth: Float) {
         val input = EditText(this).apply {
             setText(existing?.text.orEmpty())
             setSelection(text.length)
@@ -839,16 +840,23 @@ class EditorActivity : AppCompatActivity(), PdfDocumentView.Listener {
                 if (existing == null) {
                     if (text.isNotBlank()) {
                         val size = settings.width(Tool.TEXT)
-                        val t = TextAnnotation(
-                            Annotation.newId(), page, x, max(0f, y - size * 0.6f), text,
-                            settings.color(Tool.TEXT), size,
-                        )
+                        val t = if (boxWidth > 0f) {
+                            TextAnnotation(Annotation.newId(), page, x, y, text, settings.color(Tool.TEXT), size, boxWidth)
+                        } else {
+                            fitTextBox(TextAnnotation(
+                                Annotation.newId(), page, x, max(0f, y - size * 0.6f), text,
+                                settings.color(Tool.TEXT), size,
+                            ))
+                        }
                         store.commit(AnnotationStore.Change(emptyList(), listOf(t)))
                     }
                 } else if (text.isBlank()) {
                     store.commit(AnnotationStore.Change(listOf(existing), emptyList()))
                 } else if (text != existing.text) {
-                    store.commit(AnnotationStore.Change(listOf(existing), listOf(existing.withText(text))))
+                    val edited = existing.withText(text)
+                    // Las notas de antes no tenían cuadro: al editarlas pasan a tenerlo.
+                    val boxed = if (edited.boxWidth > 0f) edited else fitTextBox(edited)
+                    store.commit(AnnotationStore.Change(listOf(existing), listOf(boxed)))
                 }
             }
             .setNegativeButton(android.R.string.cancel, null)
@@ -861,6 +869,21 @@ class EditorActivity : AppCompatActivity(), PdfDocumentView.Listener {
         dialog.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE)
         dialog.show()
         input.requestFocus()
+    }
+
+    /**
+     * Cuadro para un texto tocado (sin dibujar): tan ancho como el texto, pero sin pasarse del margen
+     * derecho de la página; si no entra, el texto baja de renglón dentro del cuadro.
+     */
+    private fun fitTextBox(t: TextAnnotation): TextAnnotation {
+        val pageWidth = pageSizes.getOrNull(t.page)?.width ?: 612f
+        val margin = 18f
+        val natural = TextAnnotation(t.id, t.page, t.x, t.y, t.text, t.color, t.size).bounds.width() + 2f
+        val minWidth = t.size * 8f
+        // Si se tocó muy cerca del borde, el cuadro se corre a la izquierda para tener lugar.
+        val x = t.x.coerceAtMost(max(0f, pageWidth - margin - min(natural, minWidth)))
+        val width = natural.coerceAtMost(pageWidth - margin - x).coerceAtLeast(min(natural, t.size * 2f))
+        return TextAnnotation(t.id, t.page, x, t.y, t.text, t.color, t.size, width)
     }
 
     private fun wrap(v: View): View {

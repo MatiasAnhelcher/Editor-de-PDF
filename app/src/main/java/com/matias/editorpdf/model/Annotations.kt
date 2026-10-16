@@ -189,7 +189,10 @@ class InkAnnotation(
     }
 }
 
-/** Texto escrito sobre la página. (x, y) es la esquina superior izquierda. */
+/**
+ * Cuadro de texto sobre la página. (x, y) es la esquina superior izquierda y [boxWidth] el ancho
+ * del cuadro: el texto se acomoda solo en renglones dentro de ese ancho (0 = sin cuadro, notas viejas).
+ */
 class TextAnnotation(
     override val id: String,
     override val page: Int,
@@ -198,15 +201,17 @@ class TextAnnotation(
     val text: String,
     override val color: Int,
     val size: Float,
+    val boxWidth: Float = 0f,
 ) : Annotation() {
 
-    val lines: List<String> get() = text.split('\n')
+    /** Renglones ya cortados para que entren en el ancho del cuadro. */
+    val lines: List<String> by lazy { wrap(text, size, boxWidth) }
 
     fun baseline(line: Int): Float = y + size * BASELINE + line * size * LINE_SPACING
 
     override val bounds: RectF by lazy {
         val ls = lines
-        val w = synchronized(measurePaint) {
+        val w = if (boxWidth > 0f) boxWidth else synchronized(measurePaint) {
             measurePaint.textSize = size
             ls.maxOf { measurePaint.measureText(it) }
         }
@@ -218,10 +223,11 @@ class TextAnnotation(
         return x >= b.left - radius && x <= b.right + radius && y >= b.top - radius && y <= b.bottom + radius
     }
 
-    fun moved(dx: Float, dy: Float) = TextAnnotation(id, page, x + dx, y + dy, text, color, size)
-    fun withText(newText: String) = TextAnnotation(id, page, x, y, newText, color, size)
-    fun withColor(c: Int) = TextAnnotation(id, page, x, y, text, c, size)
-    override fun withPage(page: Int) = TextAnnotation(id, page, x, y, text, color, size)
+    fun moved(dx: Float, dy: Float) = TextAnnotation(id, page, x + dx, y + dy, text, color, size, boxWidth)
+    fun withText(newText: String) = TextAnnotation(id, page, x, y, newText, color, size, boxWidth)
+    fun withColor(c: Int) = TextAnnotation(id, page, x, y, text, c, size, boxWidth)
+    fun withBoxWidth(w: Float) = TextAnnotation(id, page, x, y, text, color, size, w)
+    override fun withPage(page: Int) = TextAnnotation(id, page, x, y, text, color, size, boxWidth)
 
     override fun toJson(): JSONObject = JSONObject().apply {
         put("type", "text")
@@ -232,6 +238,7 @@ class TextAnnotation(
         put("text", text)
         put("color", color)
         put("size", round2(size))
+        if (boxWidth > 0f) put("bw", round2(boxWidth))
     }
 
     companion object {
@@ -247,6 +254,43 @@ class TextAnnotation(
             text = o.optString("text"),
             color = o.optInt("color", 0xFF000000.toInt()),
             size = o.optDouble("size", 12.0).toFloat(),
+            boxWidth = o.optDouble("bw", 0.0).toFloat(),
         )
+
+        /** Corta el texto en renglones de hasta [width] puntos, respetando palabras y saltos de línea. */
+        fun wrap(text: String, size: Float, width: Float): List<String> {
+            val paragraphs = text.split('\n')
+            if (width <= 0f) return paragraphs
+            return synchronized(measurePaint) {
+                measurePaint.textSize = size
+                val out = ArrayList<String>()
+                for (para in paragraphs) {
+                    if (para.isEmpty()) {
+                        out.add("")
+                        continue
+                    }
+                    var line = StringBuilder()
+                    for (word in para.split(' ')) {
+                        val candidate = if (line.isEmpty()) word else "$line $word"
+                        if (measurePaint.measureText(candidate) <= width) {
+                            line = StringBuilder(candidate)
+                            continue
+                        }
+                        if (line.isNotEmpty()) out.add(line.toString())
+                        // Palabra más larga que el cuadro: se corta por letras.
+                        var rest = word
+                        while (rest.isNotEmpty() && measurePaint.measureText(rest) > width) {
+                            var n = measurePaint.breakText(rest, true, width, null).coerceAtLeast(1)
+                            if (n >= rest.length) n = rest.length
+                            out.add(rest.substring(0, n))
+                            rest = rest.substring(n)
+                        }
+                        line = StringBuilder(rest)
+                    }
+                    out.add(line.toString())
+                }
+                out
+            }
+        }
     }
 }

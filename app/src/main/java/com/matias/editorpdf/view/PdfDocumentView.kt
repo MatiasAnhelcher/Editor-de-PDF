@@ -47,7 +47,11 @@ class PdfDocumentView @JvmOverloads constructor(
 
     interface Listener {
         fun onPageChanged(page: Int, pageCount: Int)
-        fun onTextRequested(page: Int, x: Float, y: Float, existing: TextAnnotation?)
+        /**
+         * Pide escribir texto. Con [boxWidth] > 0 el cuadro ya fue dibujado: (x, y) es su esquina
+         * superior izquierda. Si no, (x, y) es el punto tocado.
+         */
+        fun onTextRequested(page: Int, x: Float, y: Float, existing: TextAnnotation?, boxWidth: Float = 0f)
         fun onSelectionChanged(count: Int) {}
 
         /** Se llama al terminar un resaltado o subrayado recto, para poder ajustarlo al texto. */
@@ -56,7 +60,7 @@ class PdfDocumentView @JvmOverloads constructor(
 
     private class Hit(val page: Int, val x: Float, val y: Float)
     private class Detail(val bitmap: Bitmap, val region: RectF, val scale: Float)
-    private enum class Mode { NONE, NAV, DRAW, ERASE, TEXT_PRESS, MOVE_TEXT, LASSO, MOVE_SELECTION, IGNORE }
+    private enum class Mode { NONE, NAV, DRAW, ERASE, TEXT_PRESS, MOVE_TEXT, DRAW_TEXT_BOX, LASSO, MOVE_SELECTION, IGNORE }
 
     var listener: Listener? = null
     lateinit var settings: Settings
@@ -141,6 +145,11 @@ class PdfDocumentView @JvmOverloads constructor(
         style = Paint.Style.STROKE
         color = 0xFF1E88E5.toInt()
     }
+    private val textFramePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        color = 0x99607D8B.toInt()
+    }
+    private val handlePaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val searchPaint = Paint().apply { color = 0x66FF9800 }
     private val eraserPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
@@ -180,6 +189,9 @@ class PdfDocumentView @JvmOverloads constructor(
     private var downY = 0f
     private var pressedText: TextAnnotation? = null
     private var movingText: TextAnnotation? = null
+    private var resizingText = false
+    private var textBoxPage = -1
+    private val textBox = RectF()
 
     // Lazo: selección de anotaciones para mover, recolorear o borrar.
     private var lassoPage = -1
@@ -498,7 +510,8 @@ class PdfDocumentView @JvmOverloads constructor(
         val moveSel = mode == Mode.MOVE_SELECTION && selectionHere
         val moving = movingText?.takeIf { it.page == page }
         val searchHere = searchPage == page && searchRects.isNotEmpty()
-        if (list.isEmpty() && !drawingHere && moving == null && !searchHere && !lassoHere) return
+        val boxHere = mode == Mode.DRAW_TEXT_BOX && textBoxPage == page
+        if (list.isEmpty() && !drawingHere && moving == null && !searchHere && !lassoHere && !boxHere) return
         canvas.save()
         canvas.clipRect(pr)
         canvas.translate(pr.left, pr.top)
@@ -513,13 +526,18 @@ class PdfDocumentView @JvmOverloads constructor(
             painter.draw(canvas, a, cache = true)
         }
         if (searchHere) searchRects.forEach { canvas.drawRect(it, searchPaint) }
+        if (tool == Tool.TEXT && !reviewMode) {
+            // Con la herramienta Texto, cada cuadro se ve como cuadro y se puede ensanchar desde el borde.
+            for (a in list) if (a is TextAnnotation && a.id != moving?.id) drawTextFrame(canvas, a, s, active = false)
+        }
         if (moving != null) {
             painter.draw(canvas, moving, cache = false)
+            drawTextFrame(canvas, moving, s, active = true)
+        }
+        if (boxHere) {
             selectionPaint.strokeWidth = 1.5f * density / s
             selectionPaint.pathEffect = DashPathEffect(floatArrayOf(6f * density / s, 4f * density / s), 0f)
-            val b = RectF(moving.bounds)
-            b.inset(-3f, -3f)
-            canvas.drawRect(b, selectionPaint)
+            canvas.drawRect(textBox, selectionPaint)
         }
         if (drawingHere) currentStroke()?.let { painter.draw(canvas, it, cache = false) }
         if (lassoHere || selectionHere) {
@@ -532,6 +550,25 @@ class PdfDocumentView @JvmOverloads constructor(
             }
         }
         canvas.restore()
+    }
+
+    private fun textFrame(t: TextAnnotation): RectF = RectF(t.bounds).apply { inset(-FRAME_PAD, -FRAME_PAD) }
+
+    private fun drawTextFrame(canvas: Canvas, t: TextAnnotation, s: Float, active: Boolean) {
+        val b = textFrame(t)
+        val paint = if (active) selectionPaint else textFramePaint
+        paint.strokeWidth = (if (active) 1.5f else 1f) * density / s
+        paint.pathEffect = if (active) DashPathEffect(floatArrayOf(6f * density / s, 4f * density / s), 0f) else null
+        canvas.drawRect(b, paint)
+        // Manija para cambiar el ancho, en el medio del borde derecho.
+        val r = 5f * density / s
+        handlePaint.style = Paint.Style.FILL
+        handlePaint.color = Color.WHITE
+        canvas.drawCircle(b.right, b.centerY(), r, handlePaint)
+        handlePaint.style = Paint.Style.STROKE
+        handlePaint.strokeWidth = 1.5f * density / s
+        handlePaint.color = 0xFF1E88E5.toInt()
+        canvas.drawCircle(b.right, b.centerY(), r, handlePaint)
     }
 
     private fun onReviewTap(x: Float, y: Float) {
@@ -607,7 +644,7 @@ class PdfDocumentView @JvmOverloads constructor(
             Mode.NAV -> handleNav(e)
             Mode.DRAW -> moveStroke(e)
             Mode.ERASE -> moveErase(e)
-            Mode.TEXT_PRESS, Mode.MOVE_TEXT -> moveText(e)
+            Mode.TEXT_PRESS, Mode.MOVE_TEXT, Mode.DRAW_TEXT_BOX -> moveText(e)
             Mode.LASSO, Mode.MOVE_SELECTION -> moveLasso(e)
             else -> Unit
         }
@@ -672,10 +709,17 @@ class PdfDocumentView @JvmOverloads constructor(
                 val to = movingText
                 if (from != null && to != null) store?.commit(AnnotationStore.Change(listOf(from), listOf(to)))
             }
+            Mode.DRAW_TEXT_BOX -> {
+                if (textBox.width() >= MIN_BOX_WIDTH) {
+                    listener?.onTextRequested(textBoxPage, textBox.left, textBox.top, null, textBox.width())
+                }
+                textBoxPage = -1
+            }
             else -> Unit
         }
         pressedText = null
         movingText = null
+        resizingText = false
         mode = Mode.NONE
         activeId = -1
         invalidate()
@@ -694,6 +738,8 @@ class PdfDocumentView @JvmOverloads constructor(
         }
         pressedText = null
         movingText = null
+        resizingText = false
+        textBoxPage = -1
         if (mode != Mode.NAV) mode = Mode.NONE
         invalidate()
     }
@@ -973,10 +1019,25 @@ class PdfDocumentView @JvmOverloads constructor(
         downX = x
         downY = y
         mode = Mode.TEXT_PRESS
+        resizingText = false
         val hit = screenToPage(x, y)
+        val texts = hit?.let { h -> store?.forPage(h.page)?.filterIsInstance<TextAnnotation>() }.orEmpty()
+        // Primero la manija del borde derecho (cambiar ancho), después el cuadro entero (mover/editar).
+        val grab = 14f * density / scale
+        val handle = hit?.let { h ->
+            texts.lastOrNull { t ->
+                val b = textFrame(t)
+                abs(h.x - b.right) <= grab && h.y >= b.top - grab && h.y <= b.bottom + grab
+            }
+        }
+        if (handle != null) {
+            pressedText = handle
+            resizingText = true
+            return
+        }
         pressedText = hit?.let { h ->
             val pad = 6f * density / scale
-            store?.forPage(h.page)?.lastOrNull { it is TextAnnotation && it.hitTest(h.x, h.y, pad) } as? TextAnnotation
+            texts.lastOrNull { it.hitTest(h.x, h.y, pad) }
         }
     }
 
@@ -988,6 +1049,11 @@ class PdfDocumentView @JvmOverloads constructor(
         if (mode == Mode.TEXT_PRESS && hypot(x - downX, y - downY) > touchSlop) {
             when {
                 pressedText != null -> mode = Mode.MOVE_TEXT
+                activeIsPen && screenToPage(downX, downY) != null -> {
+                    // Arrastrar el lápiz sobre un lugar vacío dibuja el cuadro, como en Acrobat.
+                    textBoxPage = screenToPage(downX, downY)!!.page
+                    mode = Mode.DRAW_TEXT_BOX
+                }
                 !activeIsPen -> {
                     startNav(e, fromDown = false)
                     return
@@ -997,6 +1063,24 @@ class PdfDocumentView @JvmOverloads constructor(
                     return
                 }
             }
+        }
+        if (mode == Mode.DRAW_TEXT_BOX) {
+            val a = screenToPage(downX, downY) ?: return
+            val sz = sizes[textBoxPage]
+            val bx = (a.x + (x - downX) / scale).coerceIn(0f, sz.width)
+            val by = (a.y + (y - downY) / scale).coerceIn(0f, sz.height)
+            textBox.set(min(a.x, bx), min(a.y, by), max(a.x, bx), max(a.y, by))
+            invalidate()
+            return
+        }
+        if (mode == Mode.MOVE_TEXT && resizingText) {
+            val t = pressedText ?: return
+            val sz = sizes[t.page]
+            val start = if (t.boxWidth > 0f) t.boxWidth else t.bounds.width()
+            val w = (start + (x - downX) / scale).coerceIn(max(MIN_BOX_WIDTH, t.size * 2f), max(MIN_BOX_WIDTH, sz.width - t.x))
+            movingText = t.withBoxWidth(w)
+            invalidate()
+            return
         }
         if (mode == Mode.MOVE_TEXT) {
             val t = pressedText ?: return
@@ -1145,5 +1229,11 @@ class PdfDocumentView @JvmOverloads constructor(
         private const val MIN_ZOOM = 0.5f
         private const val MAX_ZOOM = 8f
         private const val MAX_BASE_PX = 1400f
+
+        /** Margen entre el texto y el marco del cuadro, en puntos. */
+        private const val FRAME_PAD = 3f
+
+        /** Ancho mínimo de un cuadro de texto, en puntos. */
+        private const val MIN_BOX_WIDTH = 24f
     }
 }
