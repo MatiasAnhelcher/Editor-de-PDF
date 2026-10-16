@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="c_primary">#B4C5EE</color>
+    <color name="c_on_primary">#102244</color>
+    <color name="c_primary_container">#2B3D66</color>
+    <color name="c_on_primary_container">#DCE3F5</color>
+    <color name="c_secondary">#E2C68E</color>
+    <color name="c_on_secondary">#3F2E06</color>
+    <color name="c_secondary_container">#5B4718</color>
+    <color name="c_on_secondary_container">#F3E3BF</color>
+    <color name="c_tertiary">#B5CFBF</color>
+    <color name="c_on_tertiary">#213629</color>
+    <color name="c_tertiary_container">#374D3F</color>
+    <color name="c_on_tertiary_container">#D3E6D9</color>
+    <color name="c_surface">#141517</color>
+    <color name="c_on_surface">#E5E2DC</color>
+    <color name="c_surface_variant">#3A3833</color>
+    <color name="c_on_surface_variant">#CBC6BC</color>
+    <color name="c_surface_lowest">#0F1012</color>
+    <color name="c_surface_low">#1B1C1E</color>
+    <color name="c_surface_container">#202123</color>
+    <color name="c_surface_high">#2A2B2D</color>
+    <color name="c_surface_highest">#353638</color>
+    <color name="c_outline">#948F86</color>
+    <color name="c_outline_variant">#48463F</color>
+    <color name="c_canvas">#0E0F11</color>
+</resources>

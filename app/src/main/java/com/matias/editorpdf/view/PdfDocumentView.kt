@@ -134,8 +134,8 @@ class PdfDocumentView @JvmOverloads constructor(
     // --- Pintura ---------------------------------------------------------------------------
     private val bitmapPaint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG)
     private val pagePaint = Paint().apply { color = Color.WHITE }
-    private val shadowPaint = Paint().apply { color = 0x22000000 }
-    private val backgroundColor = 0xFFE3E5E8.toInt()
+    private val shadowPaint = Paint().apply { color = 0x1A000000 }
+    private val backgroundColor = context.getColor(com.matias.editorpdf.R.color.c_canvas)
     private val painter = AnnotationPainter()
     private val selectionPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE

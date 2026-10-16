@@ -42,5 +42,8 @@ jobs:
           name: Editor de PDF 1.0.${{ github.run_number }}
           files: EditorDePDF.apk
           body: |
+            ${{ github.event.head_commit.message }}
+
+            ---
             Descarga **EditorDePDF.apk** desde la tablet e instálalo.
             Si Android lo pide, permite «Instalar apps desconocidas» para el navegador o «Mis archivos».

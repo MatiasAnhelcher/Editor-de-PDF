@@ -3,7 +3,7 @@
     <string name="app_name">Editor de PDF</string>
     <string name="open_pdf">Abrir PDF</string>
     <string name="recent">Recientes</string>
-    <string name="no_recent">Todavía no abriste ningún PDF.\nToca «Abrir PDF» para elegir uno de tu tablet.</string>
+    <string name="no_recent">Toca «Abrir PDF» para elegir un libro o apunte de tu tablet. Aparecerá acá con su portada y la página donde quedaste.</string>
     <string name="home_tip">Con el S Pen escribes y resaltas. Con el dedo te mueves por el documento y haces zoom con dos dedos. Mantén apretado el botón del S Pen para borrar.</string>
     <string name="untitled">Sin nombre</string>
     <string name="recent_subtitle">Página %1$d · %2$s</string>
@@ -24,12 +24,12 @@
     <string name="page_indicator">%1$d / %2$d</string>
     <string name="unsaved_changes">Cambios sin guardar</string>
 
-    <string name="tool_hand">✋ Mover</string>
-    <string name="tool_pen">✏️ Lápiz</string>
-    <string name="tool_highlighter">🖍️ Resaltar</string>
-    <string name="tool_underline">〰️ Subrayar</string>
-    <string name="tool_text">🔤 Texto</string>
-    <string name="tool_eraser">🧽 Borrar</string>
+    <string name="tool_hand">Mover</string>
+    <string name="tool_pen">Lápiz</string>
+    <string name="tool_highlighter">Resaltador</string>
+    <string name="tool_underline">Subrayado</string>
+    <string name="tool_text">Texto</string>
+    <string name="tool_eraser">Borrador</string>
     <string name="color">Color</string>
     <string name="stroke_width">Grosor: %1$s</string>
     <string name="text_size">Tamaño: %1$s</string>
@@ -85,7 +85,7 @@
     <string name="search_count">%1$d resultados</string>
     <string name="search_scanned">Este PDF parece escaneado (sus páginas son imágenes), así que no se puede buscar texto en él.</string>
 
-    <string name="tool_lasso">➰ Lazo</string>
+    <string name="tool_lasso">Lazo</string>
     <string name="lasso_hint">Rodea con el lápiz lo que quieras seleccionar.</string>
     <string name="lasso_selected">%1$d seleccionados: arrástralos para moverlos o toca un color.</string>
     <string name="delete_selection">Borrar selección</string>
@@ -113,4 +113,26 @@
     <string name="grade_hard">Difícil</string>
     <string name="grade_good">Bien</string>
     <string name="grade_easy">Fácil</string>
+    <string name="check_updates">Buscar actualizaciones</string>
+    <string name="checking_updates">Buscando actualizaciones…</string>
+    <string name="update_available">Hay una versión nueva: %1$s (tienes la %2$s)</string>
+    <string name="update_now">Actualizar</string>
+    <string name="update_later">Más tarde</string>
+    <string name="up_to_date">Ya tienes la última versión (%1$s).</string>
+    <string name="update_check_failed">No se pudo buscar actualizaciones. Revisa la conexión a internet.\n\n%1$s</string>
+    <string name="update_downloading">Descargando la versión %1$s…</string>
+    <string name="update_downloading_percent">Descargando la versión %1$s… %2$d%%</string>
+    <string name="update_installing">Instalando… La app se cerrará sola al terminar; vuelve a abrirla.</string>
+    <string name="update_failed">No se pudo instalar la actualización. %1$s</string>
+    <string name="update_permission_title">Permitir actualizaciones</string>
+    <string name="update_permission_message">Android pide permiso una sola vez para que la app pueda instalar sus propias actualizaciones. Activa «Permitir de esta fuente» y vuelve.</string>
+    <string name="update_permission_go">Ir a ajustes</string>
+    <string name="update_whats_new">Novedades</string>
+    <string name="library_overline">Editor de PDF</string>
+    <string name="library_title">Biblioteca</string>
+    <string name="continue_reading">Seguir leyendo</string>
+    <string name="continue_button">Continuar</string>
+    <string name="empty_title">Tu biblioteca está vacía</string>
+    <string name="page_of">Página %1$d de %2$d · %3$s</string>
+    <string name="page_short">Pág. %1$d de %2$d</string>
 </resources>

@@ -1,6 +1,82 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Paleta propia "tinta y papel": azul tinta, dorado y fondos cálidos. -->
     <style name="Theme.EditorPDF" parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="colorPrimary">@color/brand</item>
+        <item name="colorPrimary">@color/c_primary</item>
+        <item name="colorOnPrimary">@color/c_on_primary</item>
+        <item name="colorPrimaryContainer">@color/c_primary_container</item>
+        <item name="colorOnPrimaryContainer">@color/c_on_primary_container</item>
+        <item name="colorSecondary">@color/c_secondary</item>
+        <item name="colorOnSecondary">@color/c_on_secondary</item>
+        <item name="colorSecondaryContainer">@color/c_secondary_container</item>
+        <item name="colorOnSecondaryContainer">@color/c_on_secondary_container</item>
+        <item name="colorTertiary">@color/c_tertiary</item>
+        <item name="colorOnTertiary">@color/c_on_tertiary</item>
+        <item name="colorTertiaryContainer">@color/c_tertiary_container</item>
+        <item name="colorOnTertiaryContainer">@color/c_on_tertiary_container</item>
+        <item name="android:colorBackground">@color/c_surface</item>
+        <item name="colorOnBackground">@color/c_on_surface</item>
+        <item name="colorSurface">@color/c_surface</item>
+        <item name="colorOnSurface">@color/c_on_surface</item>
+        <item name="colorSurfaceVariant">@color/c_surface_variant</item>
+        <item name="colorOnSurfaceVariant">@color/c_on_surface_variant</item>
+        <item name="colorSurfaceContainerLowest">@color/c_surface_lowest</item>
+        <item name="colorSurfaceContainerLow">@color/c_surface_low</item>
+        <item name="colorSurfaceContainer">@color/c_surface_container</item>
+        <item name="colorSurfaceContainerHigh">@color/c_surface_high</item>
+        <item name="colorSurfaceContainerHighest">@color/c_surface_highest</item>
+        <item name="colorOutline">@color/c_outline</item>
+        <item name="colorOutlineVariant">@color/c_outline_variant</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="shapeAppearanceCornerMedium">@style/Shape.EditorPDF.Medium</item>
+        <item name="shapeAppearanceCornerLarge">@style/Shape.EditorPDF.Large</item>
+        <item name="materialAlertDialogTheme">@style/ThemeOverlay.EditorPDF.Dialog</item>
+    </style>
+
+    <style name="Shape.EditorPDF.Medium" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">14dp</item>
+    </style>
+
+    <style name="Shape.EditorPDF.Large" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">20dp</item>
+    </style>
+
+    <style name="ThemeOverlay.EditorPDF.Dialog" parent="ThemeOverlay.Material3.MaterialAlertDialog">
+        <item name="materialAlertDialogTitleTextStyle">@style/EditorPDF.DialogTitle</item>
+    </style>
+
+    <style name="EditorPDF.DialogTitle" parent="MaterialAlertDialog.Material3.Title.Text">
+        <item name="android:fontFamily">serif</item>
+    </style>
+
+    <!-- Títulos con tipografía serif, al estilo de un libro. -->
+    <style name="TextAppearance.EditorPDF.Display" parent="TextAppearance.Material3.HeadlineMedium">
+        <item name="android:fontFamily">serif</item>
+        <item name="android:textColor">?attr/colorOnSurface</item>
+    </style>
+
+    <style name="TextAppearance.EditorPDF.Title" parent="TextAppearance.Material3.TitleLarge">
+        <item name="android:fontFamily">serif</item>
+    </style>
+
+    <style name="TextAppearance.EditorPDF.Overline" parent="TextAppearance.Material3.LabelMedium">
+        <item name="android:textAllCaps">true</item>
+        <item name="android:letterSpacing">0.12</item>
+        <item name="android:textColor">?attr/colorSecondary</item>
+    </style>
+
+    <!-- Botón de herramienta del dock: solo ícono, con fondo cuando está elegida. -->
+    <style name="Widget.EditorPDF.ToolButton" parent="Widget.Material3.Button.IconButton">
+        <item name="android:layout_width">52dp</item>
+        <item name="android:layout_height">52dp</item>
+        <item name="android:insetTop">2dp</item>
+        <item name="android:insetBottom">2dp</item>
+        <item name="android:layout_marginHorizontal">1dp</item>
+        <item name="iconSize">24dp</item>
+        <item name="iconTint">?attr/colorOnSurfaceVariant</item>
+        <item name="shapeAppearance">@style/ShapeAppearance.Material3.Corner.Full</item>
     </style>
 </resources>
