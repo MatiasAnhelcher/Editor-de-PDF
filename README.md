@@ -42,6 +42,7 @@ La pantalla de inicio es tu **biblioteca**: muestra la portada de cada PDF, cuá
 
 - **Tu estudio** (arriba en la biblioteca): racha de días seguidos estudiando (desde 5 minutos por día), anillo con la meta del día (tócalo para cambiarla) y los minutos de los últimos 7 días. El tiempo cuenta solo mientras usas la app: si pasan 2 minutos sin tocarla, se pausa.
 - Al cumplir la meta, la app te avisa con una vibración suave.
+- **Recordatorio diario** (botón de la campana en «Tu estudio» o menú ⋮): elige una hora y, si ese día todavía no cumpliste la meta, te llega una notificación para no cortar la racha.
 
 ### Uso general
 

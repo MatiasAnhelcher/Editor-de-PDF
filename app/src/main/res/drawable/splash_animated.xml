@@ -8,128 +8,93 @@
             android:viewportWidth="108"
             android:viewportHeight="108">
             <group
-                android:name="book"
+                android:name="doc"
                 android:pivotX="54"
-                android:pivotY="56"
-                android:scaleX="0.82"
-                android:scaleY="0.82">
-                <path android:fillColor="#33000000" android:pathData="M54,43C46,39 37,38 31,39V75C37,74 46,75 54,79C62,75 71,74 77,75V39C71,38 62,39 54,43Z" />
-                <group
-                    android:name="left"
-                    android:pivotX="54"
-                    android:pivotY="56"
-                    android:scaleX="0.2">
-                    <path android:fillColor="#FFEFE7D4" android:pathData="M54,40C46,36 36,35 30,36V72C36,71 46,72 54,76Z" />
-                    <path android:fillColor="#FFB3B9C6" android:pathData="M35,45.2h14v1.6h-14z M35,51.2h14v1.6h-14z M35,57.2h14v1.6h-14z M35,63.2h10v1.6h-10z" />
+                android:pivotY="58"
+                android:scaleX="0.7"
+                android:scaleY="0.7">
+
+    <path android:fillColor="#40000000" android:pathData="M38,31h25l11,11v39a2,2 0 0 1 -2,2h-34a2,2 0 0 1 -2,-2v-48a2,2 0 0 1 2,-2z" />
+    <path android:fillColor="#FFFDFBF6" android:pathData="M37,28h25l11,11v39a2,2 0 0 1 -2,2h-34a2,2 0 0 1 -2,-2v-48a2,2 0 0 1 2,-2z" />
+    <path android:fillColor="#FFE9DFD3" android:pathData="M62,28l11,11h-9a2,2 0 0 1 -2,-2z" />
+    <path android:fillColor="#00000000" android:strokeColor="#FFC4322A" android:strokeWidth="2.6" android:strokeLineCap="round" android:strokeLineJoin="round"
+                android:pathData="M42,52V43H46a2.6,2.6 0 0 1 0,5.2H42 M50.5,52V43h2.4a4.5,4.5 0 0 1 0,9z M60.5,52V43h5 M60.5,47.4h4" />
+    <path android:fillColor="#FFC9CDD6" android:pathData="M41,57.4h26v1.6h-26z M41,68.4h18v1.6h-18z" />
+    
+
+    
+
+                <group android:name="highlight" android:pivotX="40" android:scaleX="0">
+                    <path android:fillColor="#FFF0C25A" android:pathData="M40,60.4h24v5.6h-24z" />
                 </group>
-                <group
-                    android:name="right"
-                    android:pivotX="54"
-                    android:pivotY="56"
-                    android:scaleX="0.2">
-                    <path android:fillColor="#FFFAF6EC" android:pathData="M54,40C62,36 72,35 78,36V72C72,71 62,72 54,76Z" />
-                    <path android:fillColor="#FFB3B9C6" android:pathData="M59,57.2h14v1.6h-14z M59,63.2h10v1.6h-10z" />
-                    <group
-                        android:name="highlight"
-                        android:pivotX="58"
-                        android:scaleX="0">
-                        <path android:fillColor="#FFE6B652" android:pathData="M58,48.6h16v5.6h-16z" />
-                    </group>
-                    <path android:fillColor="#FF3A4766" android:pathData="M59,50.6h14v1.6h-14z" />
-                    <group
-                        android:name="ribbon"
-                        android:translateY="-8">
-                        <path
-                            android:name="ribbon_path"
-                            android:fillAlpha="0"
-                            android:fillColor="#FFC8963A"
-                            android:pathData="M69,36.6h5v10.4l-2.5,-2.2l-2.5,2.2z" />
-                    </group>
-                </group>
+                <path android:fillColor="#FF3A4766" android:pathData="M41,62.4h22v1.6h-22z" />
+                <group android:name="pen" android:pivotX="68" android:pivotY="70" android:rotation="38" android:translateX="14" android:translateY="10">
+                <path android:fillColor="#FF1F2A44" android:pathData="M65.5,57h5v17h-5z" />
+                <path android:fillColor="#FFD9A441" android:pathData="M65.5,74h5l-2.5,5z" />
+                <path android:fillColor="#FF3C4C78" android:pathData="M65.5,57h5v2.4h-5z" />
+            </group>
             </group>
         </vector>
     </aapt:attr>
 
-    <target android:name="book">
+    <target android:name="doc">
         <aapt:attr name="android:animation">
             <set>
                 <objectAnimator
                     android:duration="520"
                     android:interpolator="@android:interpolator/overshoot"
                     android:propertyName="scaleX"
-                    android:valueFrom="0.82"
+                    android:startOffset="0"
+                    android:valueFrom="0.7"
                     android:valueTo="1"
                     android:valueType="floatType" />
                 <objectAnimator
                     android:duration="520"
                     android:interpolator="@android:interpolator/overshoot"
                     android:propertyName="scaleY"
-                    android:valueFrom="0.82"
+                    android:startOffset="0"
+                    android:valueFrom="0.7"
                     android:valueTo="1"
                     android:valueType="floatType" />
             </set>
         </aapt:attr>
     </target>
 
-    <target android:name="left">
-        <aapt:attr name="android:animation">
-            <objectAnimator
-                android:duration="420"
-                android:interpolator="@android:interpolator/decelerate_cubic"
-                android:propertyName="scaleX"
-                android:valueFrom="0.2"
-                android:valueTo="1"
-                android:valueType="floatType" />
-        </aapt:attr>
-    </target>
-
-    <target android:name="right">
-        <aapt:attr name="android:animation">
-            <objectAnimator
-                android:duration="420"
-                android:interpolator="@android:interpolator/decelerate_cubic"
-                android:propertyName="scaleX"
-                android:valueFrom="0.2"
-                android:valueTo="1"
-                android:valueType="floatType" />
-        </aapt:attr>
-    </target>
-
     <target android:name="highlight">
         <aapt:attr name="android:animation">
-            <objectAnimator
-                android:duration="380"
-                android:interpolator="@android:interpolator/fast_out_slow_in"
-                android:propertyName="scaleX"
-                android:startOffset="420"
-                android:valueFrom="0"
-                android:valueTo="1"
-                android:valueType="floatType" />
+            <set>
+                <objectAnimator
+                    android:duration="360"
+                    android:interpolator="@android:interpolator/fast_out_slow_in"
+                    android:propertyName="scaleX"
+                    android:startOffset="380"
+                    android:valueFrom="0"
+                    android:valueTo="1"
+                    android:valueType="floatType" />
+            </set>
         </aapt:attr>
     </target>
 
-    <target android:name="ribbon">
+    <target android:name="pen">
         <aapt:attr name="android:animation">
-            <objectAnimator
-                android:duration="320"
-                android:interpolator="@android:interpolator/decelerate_quad"
-                android:propertyName="translateY"
-                android:startOffset="560"
-                android:valueFrom="-8"
-                android:valueTo="0"
-                android:valueType="floatType" />
-        </aapt:attr>
-    </target>
-
-    <target android:name="ribbon_path">
-        <aapt:attr name="android:animation">
-            <objectAnimator
-                android:duration="200"
-                android:propertyName="fillAlpha"
-                android:startOffset="560"
-                android:valueFrom="0"
-                android:valueTo="1"
-                android:valueType="floatType" />
+            <set>
+                <objectAnimator
+                    android:duration="380"
+                    android:interpolator="@android:interpolator/decelerate_cubic"
+                    android:propertyName="translateX"
+                    android:startOffset="480"
+                    android:valueFrom="14"
+                    android:valueTo="0"
+                    android:valueType="floatType" />
+                <objectAnimator
+                    android:duration="380"
+                    android:interpolator="@android:interpolator/decelerate_cubic"
+                    android:propertyName="translateY"
+                    android:startOffset="480"
+                    android:valueFrom="10"
+                    android:valueTo="0"
+                    android:valueType="floatType" />
+            </set>
         </aapt:attr>
     </target>
 </animated-vector>

@@ -152,4 +152,16 @@
     <string name="week_chart">Minutos de estudio de los últimos 7 días</string>
     <string name="goal_reached">¡Meta del día cumplida! Buen trabajo.</string>
     <string name="goal_reached_streak">¡Meta del día cumplida! Llevas %1$d días seguidos.</string>
+    <string name="reminder_channel">Recordatorio de estudio</string>
+    <string name="reminder_title">Es un buen momento para estudiar</string>
+    <string name="reminder_title_streak">Tu racha de %1$d días te espera</string>
+    <string name="reminder_text">Hoy todavía no estudiaste. Con %1$d minutos cumples la meta del día.</string>
+    <string name="reminder_text_partial">Te faltan %1$d minutos para la meta de hoy.</string>
+    <string name="reminder_menu">Recordatorio diario</string>
+    <string name="reminder_off">Desactivado</string>
+    <string name="reminder_at">Recordatorio a las %1$s</string>
+    <string name="reminder_set">Recordatorio diario</string>
+    <string name="reminder_other">Otra hora…</string>
+    <string name="reminder_saved">Te aviso todos los días a las %1$s si todavía no cumpliste la meta.</string>
+    <string name="reminder_need_permission">Para recordarte, Android necesita permiso de notificaciones.</string>
 </resources>

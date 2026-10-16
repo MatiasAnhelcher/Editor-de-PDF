@@ -157,6 +157,16 @@
                                 android:maxWidth="200dp"
                                 android:textAppearance="?attr/textAppearanceBodyMedium"
                                 android:textColor="?attr/colorOnSurfaceVariant" />
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/reminder_button"
+                                style="?attr/materialButtonOutlinedStyle"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="8dp"
+                                android:text="@string/reminder_menu"
+                                app:icon="@drawable/ic_bell"
+                                app:iconSize="18dp" />
                         </LinearLayout>
 
                         <com.matias.editorpdf.view.WeekBarsView
