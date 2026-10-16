@@ -123,11 +123,14 @@ class EditorActivity : AppCompatActivity(), PdfDocumentView.Listener {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_editor)
         applyInsets(findViewById(R.id.root))
+        // Mientras se lee o se escribe, la pantalla no se apaga sola.
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         settings = Settings(this)
         recents = Recents(this)
         stats = StudyStats(this)
         pdfView = findViewById(R.id.pdf_view)
+        pdfView.readingMode = settings.readingMode
         toolbar = findViewById(R.id.toolbar)
         progress = findViewById(R.id.progress)
         pageIndicator = findViewById(R.id.page_indicator)
@@ -225,6 +228,9 @@ class EditorActivity : AppCompatActivity(), PdfDocumentView.Listener {
     }
 
     override fun onDestroy() {
+        stopReading()
+        tts?.shutdown()
+        tts = null
         super.onDestroy()
         renderer?.close()
         renderer = null
@@ -408,6 +414,8 @@ class EditorActivity : AppCompatActivity(), PdfDocumentView.Listener {
                 R.id.action_goto -> showGoToPage()
                 R.id.action_cards -> startCards()
                 R.id.action_export -> exportSummary()
+                R.id.action_reading_mode -> chooseReadingMode()
+                R.id.action_read_aloud -> if (readingPage >= 0) stopReading() else startReading(pdfView.currentPage)
                 R.id.action_share -> share()
                 R.id.action_finger -> {
                     settings.stylusOnly = !settings.stylusOnly
@@ -797,6 +805,127 @@ class EditorActivity : AppCompatActivity(), PdfDocumentView.Listener {
     private fun updateWidthLabel(tool: Tool, value: Float) {
         val v = "%.1f".format(value)
         widthLabel.text = if (tool == Tool.TEXT) getString(R.string.text_size, v) else getString(R.string.stroke_width, v)
+    }
+
+    // --- Modo de lectura y lectura en voz alta ---------------------------------------------------
+
+    private fun chooseReadingMode() {
+        val modes = ReadingMode.entries
+        val labels = arrayOf(
+            getString(R.string.reading_normal),
+            getString(R.string.reading_sepia),
+            getString(R.string.reading_night),
+        )
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.reading_mode)
+            .setSingleChoiceItems(labels, modes.indexOf(settings.readingMode)) { d, which ->
+                settings.readingMode = modes[which]
+                pdfView.readingMode = modes[which]
+                d.dismiss()
+            }
+            .show()
+    }
+
+    private var tts: android.speech.tts.TextToSpeech? = null
+    private var ttsReady = false
+
+    /** Página que se está leyendo en voz alta; -1 si no se lee nada. */
+    private var readingPage = -1
+    private var readingBar: Snackbar? = null
+
+    private fun startReading(page: Int) {
+        if (studyText == null) return
+        readingPage = page
+        readingBar?.dismiss()
+        readingBar = Snackbar.make(pdfView, R.string.reading_aloud, Snackbar.LENGTH_INDEFINITE)
+            .setAction(R.string.stop) { stopReading() }
+            .also { it.show() }
+        if (tts == null) {
+            tts = android.speech.tts.TextToSpeech(this) { status -> runOnUiThread { onTtsReady(status) } }
+        } else if (ttsReady) {
+            speakPage(page)
+        }
+    }
+
+    private fun onTtsReady(status: Int) {
+        val engine = tts ?: return
+        if (status != android.speech.tts.TextToSpeech.SUCCESS) {
+            stopReading()
+            Toast.makeText(this, R.string.read_aloud_unavailable, Toast.LENGTH_LONG).show()
+            return
+        }
+        ttsReady = true
+        // Español rioplatense si el motor lo tiene; si no, cualquier español.
+        val r = engine.setLanguage(java.util.Locale("es", "AR"))
+        if (r == android.speech.tts.TextToSpeech.LANG_MISSING_DATA || r == android.speech.tts.TextToSpeech.LANG_NOT_SUPPORTED) {
+            engine.setLanguage(java.util.Locale("es"))
+        }
+        engine.setOnUtteranceProgressListener(object : android.speech.tts.UtteranceProgressListener() {
+            override fun onStart(utteranceId: String?) = Unit
+            override fun onDone(utteranceId: String?) {
+                runOnUiThread { onPageRead(utteranceId) }
+            }
+            @Deprecated("Deprecated in Java")
+            override fun onError(utteranceId: String?) {
+                runOnUiThread { stopReading() }
+            }
+        })
+        if (readingPage >= 0) speakPage(readingPage)
+    }
+
+    private fun speakPage(page: Int) {
+        val text = studyText ?: return stopReading()
+        lifecycleScope.launch {
+            val content = withContext(Dispatchers.IO) { runCatching { text.plainText(page) }.getOrDefault("") }
+            if (readingPage != page) return@launch
+            if (content.isBlank()) {
+                stopReading()
+                Toast.makeText(this@EditorActivity, R.string.read_aloud_no_text, Toast.LENGTH_LONG).show()
+                return@launch
+            }
+            if (pdfView.currentPage != page) pdfView.scrollToPage(page)
+            val chunks = splitForSpeech(content, android.speech.tts.TextToSpeech.getMaxSpeechInputLength() - 200)
+            chunks.forEachIndexed { i, c ->
+                val mode = if (i == 0) android.speech.tts.TextToSpeech.QUEUE_FLUSH else android.speech.tts.TextToSpeech.QUEUE_ADD
+                // Solo el último trozo lleva el id de la página: al terminarlo se pasa a la siguiente.
+                val id = if (i == chunks.lastIndex) "page:$page" else "part:$page:$i"
+                tts?.speak(c, mode, null, id)
+            }
+        }
+    }
+
+    private fun onPageRead(id: String?) {
+        val page = id?.removePrefix("page:")?.takeIf { id.startsWith("page:") }?.toIntOrNull() ?: return
+        if (page != readingPage) return
+        if (page + 1 < pageCount) {
+            readingPage = page + 1
+            speakPage(page + 1)
+        } else {
+            stopReading()
+        }
+    }
+
+    private fun stopReading() {
+        readingPage = -1
+        tts?.stop()
+        readingBar?.dismiss()
+        readingBar = null
+    }
+
+    /** Corta el texto en trozos que el motor de voz acepta, sin partir oraciones si se puede. */
+    private fun splitForSpeech(text: String, max: Int): List<String> {
+        val clean = text.replace(Regex("-\\n(?=\\p{Ll})"), "").replace(Regex("\\s+"), " ").trim()
+        val out = ArrayList<String>()
+        var rest = clean
+        while (rest.length > max) {
+            var cut = rest.lastIndexOf(". ", max)
+            if (cut < max / 2) cut = rest.lastIndexOf(' ', max)
+            if (cut <= 0) cut = max
+            out.add(rest.substring(0, cut + 1).trim())
+            rest = rest.substring(cut + 1)
+        }
+        if (rest.isNotBlank()) out.add(rest.trim())
+        return out
     }
 
     // --- PdfDocumentView.Listener ----------------------------------------------------------------

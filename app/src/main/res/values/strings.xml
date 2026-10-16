@@ -172,4 +172,27 @@
     <string name="reminder_other">Otra hora…</string>
     <string name="reminder_saved">Te aviso todos los días a las %1$s si todavía no cumpliste la meta.</string>
     <string name="reminder_need_permission">Para recordarte, Android necesita permiso de notificaciones.</string>
+    <string name="action_about">Acerca de</string>
+    <string name="about_version">Versión %1$s (compilación %2$d)</string>
+    <string name="about_description">Tu escritorio de estudio para PDF, pensado para la tablet y el S Pen: lees, subrayas, resaltas y escribes sobre tus apuntes, y la app te ayuda a repasar y a sostener el hábito.</string>
+    <string name="about_features">• Lápiz, resaltador y subrayado que se acomodan al renglón\n• Cuadros de texto, lazo, colores con significado\n• Índice, marcadores, búsqueda y miniaturas\n• Modo repaso, tarjetas y resumen exportable\n• Modo lectura sepia y noche, y lectura en voz alta\n• Racha, meta diaria y recordatorios</string>
+    <string name="about_auto_updates">Buscar actualizaciones automáticamente</string>
+    <string name="about_last_check">Última búsqueda: %1$s</string>
+    <string name="about_never_checked">Todavía no se buscaron actualizaciones</string>
+    <string name="about_releases">Novedades</string>
+    <string name="about_cosmos">Parte del universo de apps Cosmos</string>
+    <string name="updates_channel">Actualizaciones</string>
+    <string name="update_notify_title">Nueva versión %1$s de Cosmos Editor de PDF</string>
+    <string name="update_notify_text">Toca para ver qué trae e instalarla.</string>
+    <string name="update_ready">La versión %1$s ya está descargada y lista para instalar</string>
+    <string name="update_install">Instalar</string>
+    <string name="reading_mode">Modo de lectura</string>
+    <string name="reading_normal">Normal</string>
+    <string name="reading_sepia">Sepia (papel cálido)</string>
+    <string name="reading_night">Noche (fondo oscuro)</string>
+    <string name="read_aloud">Leer en voz alta</string>
+    <string name="reading_aloud">Leyendo en voz alta…</string>
+    <string name="read_aloud_unavailable">Este dispositivo no tiene un motor de voz disponible.</string>
+    <string name="read_aloud_no_text">Esta página no tiene texto para leer (puede ser una imagen escaneada).</string>
+    <string name="stop">Detener</string>
 </resources>

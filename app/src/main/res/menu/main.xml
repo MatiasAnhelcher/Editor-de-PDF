@@ -4,4 +4,5 @@
     <item android:id="@+id/action_reminder" android:title="@string/reminder_menu" app:showAsAction="never" />
     <item android:id="@+id/action_icon" android:title="@string/icon_menu" app:showAsAction="never" />
     <item android:id="@+id/action_updates" android:title="@string/check_updates" app:showAsAction="never" />
+    <item android:id="@+id/action_about" android:title="@string/action_about" app:showAsAction="never" />
 </menu>
