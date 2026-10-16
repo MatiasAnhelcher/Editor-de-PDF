@@ -160,6 +160,7 @@
     <string name="icon_menu">Ícono de la app</string>
     <string name="icon_hint">Si tenías la app en la pantalla de inicio, puede que tengas que volver a ponerla.</string>
     <string name="icon_changed">Listo, el ícono cambia en unos segundos</string>
+    <string name="icon_foco">Foco</string>
     <string name="icon_indigo">Índigo</string>
     <string name="icon_azul">Azul</string>
     <string name="icon_verde">Verde</string>
