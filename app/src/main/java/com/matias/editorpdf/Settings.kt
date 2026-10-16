@@ -88,3 +88,32 @@ class Recents(context: Context) {
         prefs.edit().putString("items", arr.toString()).apply()
     }
 }
+
+/** Páginas marcadas de cada PDF. */
+class Bookmarks(context: Context) {
+    private val prefs = context.getSharedPreferences("bookmarks", Context.MODE_PRIVATE)
+
+    fun list(uri: Uri): List<Int> = runCatching {
+        val arr = JSONArray(prefs.getString(uri.toString(), "[]"))
+        (0 until arr.length()).map { arr.getInt(it) }.sorted()
+    }.getOrDefault(emptyList())
+
+    fun contains(uri: Uri, page: Int) = page in list(uri)
+
+    /** Marca o desmarca la página. Devuelve true si quedó marcada. */
+    fun toggle(uri: Uri, page: Int): Boolean {
+        val current = list(uri).toMutableSet()
+        val added = current.add(page)
+        if (!added) current.remove(page)
+        save(uri, current)
+        return added
+    }
+
+    fun remove(uri: Uri, page: Int) = save(uri, list(uri).toSet() - page)
+
+    private fun save(uri: Uri, pages: Set<Int>) {
+        val arr = JSONArray()
+        pages.sorted().forEach { arr.put(it) }
+        prefs.edit().putString(uri.toString(), arr.toString()).apply()
+    }
+}

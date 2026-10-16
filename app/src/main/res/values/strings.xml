@@ -53,4 +53,35 @@
     <string name="error_save">No se pudo guardar.\n\n%1$s</string>
     <string name="error_not_found">No se encontró el archivo. Puede que se haya movido o borrado.</string>
     <string name="error_protected_or_denied">No se pudo abrir el PDF: está protegido con contraseña o la app ya no tiene permiso para leerlo. Ábrelo de nuevo con «Abrir PDF».</string>
+
+    <string name="search">Buscar</string>
+    <string name="study_panel">Índice, marcadores y resaltados</string>
+    <string name="bookmark_page">Marcar página</string>
+    <string name="bookmark_added">Página %1$d marcada</string>
+    <string name="bookmark_removed">Marcador quitado</string>
+    <string name="review_mode">Modo repaso</string>
+    <string name="review_tip">Repaso: toca lo tapado para ver si lo recordabas.</string>
+    <string name="review_show_all">Mostrar todo</string>
+    <string name="review_hide_all">Tapar todo</string>
+    <string name="review_exit">Salir</string>
+    <string name="close">Cerrar</string>
+    <string name="tab_outline">Índice</string>
+    <string name="tab_bookmarks">Marcadores</string>
+    <string name="tab_highlights">Resaltados</string>
+    <string name="tab_search">Buscar</string>
+    <string name="loading">Cargando…</string>
+    <string name="no_outline">Este PDF no trae índice. Usa los marcadores para guardar las páginas importantes.</string>
+    <string name="no_bookmarks">No marcaste páginas todavía. Toca el ícono de marcador arriba para marcar la página actual.</string>
+    <string name="bookmarks_hint">Mantén apretado un marcador para quitarlo.</string>
+    <string name="no_highlights">Todavía no hay resaltados, subrayados ni notas en este PDF.</string>
+    <string name="kind_note">Nota</string>
+    <string name="kind_highlight">Resaltado</string>
+    <string name="kind_underline">Subrayado</string>
+    <string name="page_n">Página %1$d</string>
+    <string name="search_hint">Palabra o frase</string>
+    <string name="search_tip">Busca en todo el PDF, sin importar mayúsculas ni tildes.</string>
+    <string name="searching">Buscando… página %1$d de %2$d</string>
+    <string name="search_none">No se encontró «%1$s».</string>
+    <string name="search_count">%1$d resultados</string>
+    <string name="search_scanned">Este PDF parece escaneado (sus páginas son imágenes), así que no se puede buscar texto en él.</string>
 </resources>

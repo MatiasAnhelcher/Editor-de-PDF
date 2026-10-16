@@ -35,6 +35,8 @@ import com.matias.editorpdf.model.TextAnnotation
 import com.matias.editorpdf.model.Tool
 import com.matias.editorpdf.pdf.DocumentSession
 import com.matias.editorpdf.pdf.PageRenderer
+import com.matias.editorpdf.pdf.SearchHit
+import com.matias.editorpdf.pdf.StudyText
 import com.matias.editorpdf.pdf.WriteDeniedException
 import com.matias.editorpdf.view.PdfDocumentView
 import kotlinx.coroutines.CancellationException
@@ -59,6 +61,11 @@ class EditorActivity : AppCompatActivity(), PdfDocumentView.Listener {
     private lateinit var widthSlider: Slider
     private lateinit var widthLabel: TextView
     private lateinit var straightCheck: CheckBox
+    private lateinit var toolPanel: View
+    private lateinit var reviewBar: View
+    private lateinit var studyPanel: StudyPanel
+    private lateinit var bookmarks: Bookmarks
+    private var studyText: StudyText? = null
 
     private lateinit var settings: Settings
     private lateinit var recents: Recents
@@ -104,6 +111,13 @@ class EditorActivity : AppCompatActivity(), PdfDocumentView.Listener {
         widthSlider = findViewById(R.id.width_slider)
         widthLabel = findViewById(R.id.width_label)
         straightCheck = findViewById(R.id.straight_check)
+        toolPanel = findViewById(R.id.tool_panel)
+        reviewBar = findViewById(R.id.review_bar)
+        bookmarks = Bookmarks(this)
+        studyPanel = StudyPanel(this, findViewById(R.id.study_panel), studyHost)
+        findViewById<View>(R.id.review_show_all).setOnClickListener { pdfView.revealAll(true) }
+        findViewById<View>(R.id.review_hide_all).setOnClickListener { pdfView.revealAll(false) }
+        findViewById<View>(R.id.review_exit).setOnClickListener { setReviewMode(false) }
 
         val uri = intent?.data
         if (uri == null) {
@@ -119,6 +133,7 @@ class EditorActivity : AppCompatActivity(), PdfDocumentView.Listener {
         store.onChanged = {
             pdfView.invalidate()
             updateMenu()
+            if (studyPanel.isOpen) studyPanel.refresh()
         }
 
         setupToolbar()
@@ -142,6 +157,8 @@ class EditorActivity : AppCompatActivity(), PdfDocumentView.Listener {
         super.onDestroy()
         renderer?.close()
         renderer = null
+        studyText?.let { t -> ioScope.launch { t.close() } }
+        studyText = null
     }
 
     // ---------------------------------------------------------------------------------------
@@ -167,6 +184,7 @@ class EditorActivity : AppCompatActivity(), PdfDocumentView.Listener {
                     return@launch
                 }
                 renderer = loaded.renderer
+                studyText = StudyText(s.workFile)
                 pageCount = loaded.sizes.size
                 docName = loaded.name
                 toolbar.title = loaded.name
@@ -264,6 +282,14 @@ class EditorActivity : AppCompatActivity(), PdfDocumentView.Listener {
     }
 
     private fun handleBack() {
+        if (studyPanel.isOpen) {
+            studyPanel.close()
+            return
+        }
+        if (pdfView.reviewMode) {
+            setReviewMode(false)
+            return
+        }
         if (!store.isDirty || renderer == null) {
             finish()
             return
@@ -290,6 +316,12 @@ class EditorActivity : AppCompatActivity(), PdfDocumentView.Listener {
         toolbar.menu.findItem(R.id.action_finger).isChecked = !settings.stylusOnly
         toolbar.setOnMenuItemClickListener { item ->
             when (item.itemId) {
+                R.id.action_search -> if (renderer != null) studyPanel.open(StudyPanel.Tab.SEARCH)
+                R.id.action_panel -> if (studyPanel.isOpen) studyPanel.close() else if (renderer != null) {
+                    studyPanel.open(StudyPanel.Tab.OUTLINE)
+                }
+                R.id.action_bookmark -> toggleBookmark()
+                R.id.action_review -> setReviewMode(!pdfView.reviewMode)
                 R.id.action_undo -> store.undo()
                 R.id.action_redo -> store.redo()
                 R.id.action_save -> save()
@@ -309,6 +341,66 @@ class EditorActivity : AppCompatActivity(), PdfDocumentView.Listener {
             true
         }
         updateMenu()
+    }
+
+    private fun toggleBookmark() {
+        val s = session ?: return
+        if (renderer == null) return
+        val page = pdfView.currentPage
+        val added = bookmarks.toggle(s.uri, page)
+        Toast.makeText(
+            this,
+            if (added) getString(R.string.bookmark_added, page + 1) else getString(R.string.bookmark_removed),
+            Toast.LENGTH_SHORT,
+        ).show()
+        updateBookmarkIcon()
+        if (studyPanel.isOpen) studyPanel.refresh()
+    }
+
+    private fun updateBookmarkIcon() {
+        val s = session ?: return
+        val marked = renderer != null && bookmarks.contains(s.uri, pdfView.currentPage)
+        toolbar.menu?.findItem(R.id.action_bookmark)
+            ?.setIcon(if (marked) R.drawable.ic_bookmark else R.drawable.ic_bookmark_border)
+    }
+
+    private fun setReviewMode(on: Boolean) {
+        pdfView.reviewMode = on
+        reviewBar.isVisible = on
+        toolPanel.isVisible = !on
+        toolbar.menu?.findItem(R.id.action_review)?.icon?.alpha = if (on) 255 else 170
+    }
+
+    private val studyHost = object : StudyPanel.Host {
+        override val text: StudyText? get() = studyText
+        override val pageCount: Int get() = this@EditorActivity.pageCount
+        override fun annotations(): List<Annotation> = store.all()
+        override fun bookmarks(): List<Int> = session?.let { bookmarks.list(it.uri) }.orEmpty()
+        override fun removeBookmark(page: Int) {
+            session?.let { bookmarks.remove(it.uri, page) }
+            updateBookmarkIcon()
+        }
+        override fun goToPage(page: Int, y: Float?) {
+            if (y != null) pdfView.scrollToPagePoint(page, y) else pdfView.scrollToPage(page)
+            closePanelIfNarrow()
+        }
+        override fun showSearchMatch(hit: SearchHit) {
+            val t = studyText ?: return
+            lifecycleScope.launch {
+                val rects = withContext(Dispatchers.IO) { runCatching { t.matchRects(hit) }.getOrDefault(emptyList()) }
+                pdfView.showSearchMatch(hit.page, rects)
+                closePanelIfNarrow()
+            }
+        }
+        override fun clearSearchMatch() = pdfView.clearSearchMatch()
+    }
+
+    /** En pantallas angostas (tablet vertical dividida, teléfono) el panel tapa la página: lo cerramos. */
+    private fun closePanelIfNarrow() {
+        if (resources.configuration.screenWidthDp < 800) {
+            val root = findViewById<View>(R.id.study_panel)
+            root.isVisible = false
+        }
     }
 
     private fun updateMenu() {
@@ -427,6 +519,7 @@ class EditorActivity : AppCompatActivity(), PdfDocumentView.Listener {
 
     override fun onPageChanged(page: Int, pageCount: Int) {
         pageIndicator.text = getString(R.string.page_indicator, page + 1, pageCount)
+        updateBookmarkIcon()
     }
 
     override fun onTextRequested(page: Int, x: Float, y: Float, existing: TextAnnotation?) {

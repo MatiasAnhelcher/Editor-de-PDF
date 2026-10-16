@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/study_panel"
+    android:layout_width="400dp"
+    android:layout_height="match_parent"
+    android:layout_gravity="end"
+    android:layout_margin="8dp"
+    android:visibility="gone"
+    app:cardElevation="8dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <com.google.android.material.tabs.TabLayout
+                android:id="@+id/study_tabs"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                app:tabMode="scrollable" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/study_close"
+                style="?attr/materialIconButtonStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:contentDescription="@string/close"
+                app:icon="@drawable/ic_close" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/search_row"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="12dp"
+            android:visibility="gone">
+
+            <EditText
+                android:id="@+id/search_input"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:hint="@string/search_hint"
+                android:imeOptions="actionSearch"
+                android:importantForAutofill="no"
+                android:inputType="text"
+                android:singleLine="true" />
+
+            <com.google.android.material.progressindicator.CircularProgressIndicator
+                android:id="@+id/search_progress"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:indeterminate="true"
+                android:visibility="gone"
+                app:indicatorSize="24dp" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/study_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="8dp"
+            android:textAppearance="?attr/textAppearanceBodyMedium" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/study_list"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:clipToPadding="false"
+            android:paddingBottom="16dp" />
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

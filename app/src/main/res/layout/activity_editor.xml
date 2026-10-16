@@ -37,6 +37,8 @@
             android:textColor="#FFFFFF"
             android:textSize="14sp" />
 
+        <include layout="@layout/study_panel" />
+
         <com.google.android.material.progressindicator.CircularProgressIndicator
             android:id="@+id/progress"
             android:layout_width="wrap_content"
@@ -47,6 +49,49 @@
     </FrameLayout>
 
     <LinearLayout
+        android:id="@+id/review_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="?attr/colorSurfaceContainer"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="12dp"
+        android:paddingVertical="6dp"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/review_tip"
+            android:textAppearance="?attr/textAppearanceBodyMedium" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/review_show_all"
+            style="?attr/materialButtonOutlinedStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="@string/review_show_all" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/review_hide_all"
+            style="?attr/materialButtonOutlinedStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="@string/review_hide_all" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/review_exit"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="@string/review_exit" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/tool_panel"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="?attr/colorSurfaceContainer"

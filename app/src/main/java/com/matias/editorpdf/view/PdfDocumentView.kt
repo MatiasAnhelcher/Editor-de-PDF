@@ -77,6 +77,19 @@ class PdfDocumentView @JvmOverloads constructor(
 
     val currentPage: Int get() = lastReportedPage.coerceAtLeast(0)
 
+    /** Modo repaso: tapa resaltados, subrayados y notas; un toque los destapa. */
+    var reviewMode = false
+        set(value) {
+            cancelToolGesture()
+            field = value
+            revealed.clear()
+            invalidate()
+        }
+    private val revealed = HashSet<String>()
+
+    private var searchPage = -1
+    private var searchRects: List<RectF> = emptyList()
+
     // --- Documento y geometría -------------------------------------------------------------
     private var renderer: PageRenderer? = null
     private var sizes: List<SizeF> = emptyList()
@@ -129,6 +142,13 @@ class PdfDocumentView @JvmOverloads constructor(
         style = Paint.Style.STROKE
         color = 0xFF1E88E5.toInt()
     }
+    private val searchPaint = Paint().apply { color = 0x66FF9800 }
+    private val coverPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+    private val coverTextPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = 0xFF5D4037.toInt()
+        textAlign = Paint.Align.CENTER
+        isFakeBoldText = true
+    }
     private val eraserPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeWidth = 1.5f * density
@@ -142,6 +162,10 @@ class PdfDocumentView @JvmOverloads constructor(
     private var activeId = -1
     private var activeIsPen = false
     private var navFromDown = false
+    private var navMoved = false
+    private var navMaxPointers = 0
+    private var navDownX = 0f
+    private var navDownY = 0f
     private var lastFx = 0f
     private var lastFy = 0f
     private var velocityTracker: VelocityTracker? = null
@@ -202,6 +226,43 @@ class PdfDocumentView @JvmOverloads constructor(
         val p = page.coerceIn(0, sizes.size - 1)
         scroller.forceFinished(true)
         offY = margin - pageTops[p] * scale
+        clampOffsets()
+        invalidate()
+        scheduleDetails()
+    }
+
+    /** Destapa (o vuelve a tapar) todo en el modo repaso. */
+    fun revealAll(show: Boolean) {
+        revealed.clear()
+        if (show) store?.all()?.forEach { revealed.add(it.id) }
+        invalidate()
+    }
+
+    fun showSearchMatch(page: Int, rects: List<RectF>) {
+        searchPage = page
+        searchRects = rects
+        if (sizes.isEmpty() || width == 0) return
+        val p = page.coerceIn(0, sizes.size - 1)
+        val top = rects.minOfOrNull { it.top } ?: 0f
+        scroller.forceFinished(true)
+        offY = height / 3f - (pageTops[p] + top) * scale
+        clampOffsets()
+        invalidate()
+        scheduleDetails()
+    }
+
+    fun clearSearchMatch() {
+        searchPage = -1
+        searchRects = emptyList()
+        invalidate()
+    }
+
+    /** Lleva a la vista la zona [y] (en puntos) de la página. */
+    fun scrollToPagePoint(page: Int, y: Float) {
+        if (sizes.isEmpty() || width == 0) return
+        val p = page.coerceIn(0, sizes.size - 1)
+        scroller.forceFinished(true)
+        offY = height / 3f - (pageTops[p] + y) * scale
         clampOffsets()
         invalidate()
         scheduleDetails()
@@ -432,15 +493,18 @@ class PdfDocumentView @JvmOverloads constructor(
         val list = store?.forPage(page).orEmpty()
         val drawingHere = mode == Mode.DRAW && strokePage == page
         val moving = movingText?.takeIf { it.page == page }
-        if (list.isEmpty() && !drawingHere && moving == null) return
+        val searchHere = searchPage == page && searchRects.isNotEmpty()
+        if (list.isEmpty() && !drawingHere && moving == null && !searchHere) return
         canvas.save()
         canvas.clipRect(pr)
         canvas.translate(pr.left, pr.top)
         canvas.scale(s, s)
         for (a in list) {
             if (moving != null && a.id == moving.id) continue
+            if (reviewMode && a.id !in revealed && drawCover(canvas, a)) continue
             drawAnnotation(canvas, a, cache = true)
         }
+        if (searchHere) searchRects.forEach { canvas.drawRect(it, searchPaint) }
         if (moving != null) {
             drawAnnotation(canvas, moving, cache = false)
             selectionPaint.strokeWidth = 1.5f * density / s
@@ -451,6 +515,46 @@ class PdfDocumentView @JvmOverloads constructor(
         }
         if (drawingHere) currentStroke()?.let { drawAnnotation(canvas, it, cache = false) }
         canvas.restore()
+    }
+
+    /** Zona que tapa una anotación en el modo repaso (null = no se tapa, como el lápiz). */
+    private fun coverRect(a: Annotation): RectF? = when {
+        a is TextAnnotation -> RectF(a.bounds).apply { inset(-2f, -2f) }
+        a is InkAnnotation && a.kind == InkKind.UNDERLINE -> RectF(a.bounds).apply { top -= 13f }
+        a is InkAnnotation && a.kind == InkKind.HIGHLIGHTER -> RectF(a.bounds)
+        else -> null
+    }
+
+    private fun drawCover(canvas: Canvas, a: Annotation): Boolean {
+        if (a is InkAnnotation && a.kind == InkKind.HIGHLIGHTER) {
+            // Mismo trazo pero opaco: tapa el texto resaltado.
+            val r = inkCache.getOrPut(a) { buildInkRender(a) }
+            inkPaint.strokeJoin = Paint.Join.ROUND
+            inkPaint.strokeCap = if (a.straight) Paint.Cap.BUTT else Paint.Cap.ROUND
+            inkPaint.color = a.color or 0xFF000000.toInt()
+            inkPaint.blendMode = null
+            r.paths.forEachIndexed { i, p ->
+                inkPaint.strokeWidth = r.widths[i] * 1.15f
+                canvas.drawPath(p, inkPaint)
+            }
+            return true
+        }
+        val rect = coverRect(a) ?: return false
+        coverPaint.color = if (a is TextAnnotation) 0xFFFFF59D.toInt() else 0xFFCFD8DC.toInt()
+        canvas.drawRoundRect(rect, 2f, 2f, coverPaint)
+        coverTextPaint.textSize = min(rect.height() * 0.8f, 14f)
+        canvas.drawText("?", rect.centerX(), rect.centerY() + coverTextPaint.textSize * 0.35f, coverTextPaint)
+        return true
+    }
+
+    private fun onReviewTap(x: Float, y: Float) {
+        val hit = screenToPage(x, y) ?: return
+        val pad = 8f * density / scale
+        val a = store?.forPage(hit.page)?.lastOrNull { a ->
+            coverRect(a)?.let { r -> hit.x >= r.left - pad && hit.x <= r.right + pad && hit.y >= r.top - pad && hit.y <= r.bottom + pad } == true
+        } ?: return
+        if (!revealed.add(a.id)) revealed.remove(a.id)
+        invalidate()
     }
 
     private fun drawAnnotation(canvas: Canvas, a: Annotation, cache: Boolean) {
@@ -533,7 +637,7 @@ class PdfDocumentView @JvmOverloads constructor(
         mode = Mode.NONE
         val pen = isPen(e, 0)
         val fingerMayDraw = !settings.stylusOnly || tool == Tool.TEXT
-        if (tool == Tool.HAND || (!pen && !fingerMayDraw)) {
+        if (reviewMode || tool == Tool.HAND || (!pen && !fingerMayDraw)) {
             startNav(e, fromDown = true)
         } else {
             beginToolGesture(e, 0, pen)
@@ -545,7 +649,7 @@ class PdfDocumentView @JvmOverloads constructor(
         val pen = isPen(e, idx)
         when (mode) {
             Mode.NAV -> {
-                if (pen && tool != Tool.HAND) {
+                if (pen && tool != Tool.HAND && !reviewMode) {
                     // La palma estaba apoyada y llegó el lápiz: el lápiz manda.
                     endNav()
                     beginToolGesture(e, idx, true)
@@ -553,7 +657,7 @@ class PdfDocumentView @JvmOverloads constructor(
                     handleNav(e)
                 }
             }
-            Mode.NONE -> if (pen && tool != Tool.HAND) beginToolGesture(e, idx, true) else startNav(e, fromDown = false)
+            Mode.NONE -> if (pen && tool != Tool.HAND && !reviewMode) beginToolGesture(e, idx, true) else startNav(e, fromDown = false)
             else -> if (!activeIsPen && !pen) {
                 // Segundo dedo mientras se dibujaba con el dedo: pasa a ser zoom/desplazamiento.
                 cancelToolGesture()
@@ -660,6 +764,10 @@ class PdfDocumentView @JvmOverloads constructor(
     private fun startNav(e: MotionEvent, fromDown: Boolean) {
         mode = Mode.NAV
         navFromDown = fromDown
+        navMoved = !fromDown
+        navMaxPointers = e.pointerCount
+        navDownX = e.getX(0)
+        navDownY = e.getY(0)
         velocityTracker?.recycle()
         velocityTracker = VelocityTracker.obtain()
         val (fx, fy) = focus(e, -1)
@@ -695,7 +803,9 @@ class PdfDocumentView @JvmOverloads constructor(
 
     private fun handleNav(e: MotionEvent) {
         scaleDetector.onTouchEvent(e)
-        if (navFromDown && tool != Tool.TEXT) doubleTap.onTouchEvent(e)
+        if (navFromDown && tool != Tool.TEXT && !reviewMode) doubleTap.onTouchEvent(e)
+        navMaxPointers = max(navMaxPointers, e.pointerCount)
+        if (!navMoved && hypot(e.getX(0) - navDownX, e.getY(0) - navDownY) > touchSlop) navMoved = true
         velocityTracker?.addMovement(e)
         val action = e.actionMasked
         val (fx, fy) = focus(e, if (action == MotionEvent.ACTION_POINTER_UP) e.actionIndex else -1)
@@ -706,6 +816,7 @@ class PdfDocumentView @JvmOverloads constructor(
                 lastFy = fy
             }
             MotionEvent.ACTION_UP -> {
+                if (reviewMode && !navMoved && navMaxPointers == 1) onReviewTap(e.x, e.y)
                 velocityTracker?.let { vt ->
                     vt.computeCurrentVelocity(1000, ViewConfiguration.get(context).scaledMaximumFlingVelocity.toFloat())
                     val id = e.getPointerId(e.actionIndex)

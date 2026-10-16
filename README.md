@@ -22,6 +22,15 @@ Cada cambio en `main` publica una versión nueva. Los APK de otras ramas quedan 
 | 🔤 Texto | Toca la página para escribir una nota. Toca una nota para editarla o borrarla; arrástrala para moverla |
 | 🧽 Borrar | Borra trazos y notas completas al pasar por encima |
 
+### Para estudiar
+
+- **Buscar** (lupa): encuentra una palabra o frase en todo el PDF, sin importar mayúsculas ni tildes, y la marca en la página. No funciona en PDFs escaneados (páginas que son fotos).
+- **Panel de estudio** (ícono de lista): índice del libro (si el PDF lo trae), páginas marcadas y la lista de todos tus resaltados, subrayados y notas con el texto que resaltaste. Toca cualquiera para ir a esa página.
+- **Marcar página** (ícono de marcador): guarda la página actual para volver rápido.
+- **Modo repaso** (ícono de ojo): tapa lo que resaltaste, subrayaste y anotaste. Intenta recordarlo y toca para destapar.
+
+### Uso general
+
 - **S Pen escribe, el dedo navega**: con el dedo te mueves y haces zoom con dos dedos aunque tengas el lápiz seleccionado. La palma apoyada se ignora mientras escribes. Si quieres escribir con el dedo, actívalo en el menú ⋮.
 - **Botón del S Pen** apretado = borrador temporal.
 - **Doble toque** con el dedo: zoom rápido.
