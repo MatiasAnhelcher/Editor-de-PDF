@@ -1,4 +1,4 @@
-# Editor de PDF
+# Cosmos Editor de PDF
 
 App para Android (pensada para la Samsung Galaxy Tab S9+ con S Pen) para estudiar con PDFs:
 abrir, leer, resaltar, subrayar, escribir a mano y agregar notas de texto, guardando todo dentro del mismo PDF.

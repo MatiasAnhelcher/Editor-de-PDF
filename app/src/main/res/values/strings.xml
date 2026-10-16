@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Editor de PDF</string>
+    <string name="app_name">Cosmos Editor de PDF</string>
     <string name="open_pdf">Abrir PDF</string>
     <string name="recent">Recientes</string>
     <string name="no_recent">Toca «Abrir PDF» para elegir un libro o apunte de tu tablet. Aparecerá acá con su portada y la página donde quedaste.</string>
@@ -128,7 +128,7 @@
     <string name="update_permission_message">Android pide permiso una sola vez para que la app pueda instalar sus propias actualizaciones. Activa «Permitir de esta fuente» y vuelve.</string>
     <string name="update_permission_go">Ir a ajustes</string>
     <string name="update_whats_new">Novedades</string>
-    <string name="library_overline">Editor de PDF</string>
+    <string name="library_overline">Cosmos · Editor de PDF</string>
     <string name="library_title">Biblioteca</string>
     <string name="continue_reading">Seguir leyendo</string>
     <string name="continue_button">Continuar</string>
@@ -160,6 +160,7 @@
     <string name="icon_menu">Ícono de la app</string>
     <string name="icon_hint">Si tenías la app en la pantalla de inicio, puede que tengas que volver a ponerla.</string>
     <string name="icon_changed">Listo, el ícono cambia en unos segundos</string>
+    <string name="icon_foco">Foco</string>
     <string name="icon_indigo">Índigo</string>
     <string name="icon_azul">Azul</string>
     <string name="icon_verde">Verde</string>
