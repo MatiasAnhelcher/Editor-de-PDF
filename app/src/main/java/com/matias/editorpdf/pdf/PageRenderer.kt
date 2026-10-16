@@ -49,14 +49,15 @@ class PageRenderer(file: File) : Closeable {
         if (closed) return
         try {
             executor.execute {
-                val bmp = if (closed || !isNeeded()) null else renderNow(page, region, scale)
+                val bmp = if (closed || !isNeeded()) null else renderSync(page, region, scale)
                 main.post { if (!closed) callback(bmp) }
             }
         } catch (_: RejectedExecutionException) {
         }
     }
 
-    private fun renderNow(page: Int, region: RectF, scale: Float): Bitmap? = try {
+    /** Dibuja ya, en el hilo que llama (no usar en el hilo principal). */
+    fun renderSync(page: Int, region: RectF, scale: Float): Bitmap? = try {
         synchronized(lock) {
             if (closed) return null
             val w = ceil(region.width() * scale).toInt().coerceIn(1, 8192)

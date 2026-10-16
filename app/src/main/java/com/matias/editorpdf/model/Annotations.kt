@@ -11,7 +11,7 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 
-enum class Tool { HAND, PEN, HIGHLIGHTER, UNDERLINE, TEXT, ERASER }
+enum class Tool { HAND, PEN, HIGHLIGHTER, UNDERLINE, TEXT, ERASER, LASSO }
 
 enum class InkKind { PEN, HIGHLIGHTER, UNDERLINE }
 
@@ -27,6 +27,18 @@ sealed class Annotation {
     abstract fun hitTest(x: Float, y: Float, radius: Float): Boolean
     abstract fun toJson(): JSONObject
     abstract fun withPage(page: Int): Annotation
+
+    fun moveBy(dx: Float, dy: Float): Annotation = when (this) {
+        is InkAnnotation -> translated(dx, dy)
+        is TextAnnotation -> moved(dx, dy)
+    }
+
+    fun recolored(c: Int): Annotation = when (this) {
+        is InkAnnotation -> withColor(c)
+        is TextAnnotation -> withColor(c)
+    }
+
+    abstract val color: Int
 
     companion object {
         fun newId(): String = UUID.randomUUID().toString()
@@ -54,7 +66,7 @@ class InkAnnotation(
     override val id: String,
     override val page: Int,
     val kind: InkKind,
-    val color: Int,
+    override val color: Int,
     val width: Float,
     val points: FloatArray,
     val straight: Boolean,
@@ -126,6 +138,17 @@ class InkAnnotation(
 
     override fun withPage(page: Int) = InkAnnotation(id, page, kind, color, width, points, straight)
 
+    fun withColor(c: Int) = InkAnnotation(id, page, kind, c, width, points, straight)
+
+    fun translated(dx: Float, dy: Float): InkAnnotation {
+        val p = points.copyOf()
+        for (i in 0 until pointCount) {
+            p[i * 3] += dx
+            p[i * 3 + 1] += dy
+        }
+        return InkAnnotation(id, page, kind, color, width, p, straight)
+    }
+
     override fun toJson(): JSONObject = JSONObject().apply {
         put("type", "ink")
         put("id", id)
@@ -173,7 +196,7 @@ class TextAnnotation(
     val x: Float,
     val y: Float,
     val text: String,
-    val color: Int,
+    override val color: Int,
     val size: Float,
 ) : Annotation() {
 
@@ -197,6 +220,7 @@ class TextAnnotation(
 
     fun moved(dx: Float, dy: Float) = TextAnnotation(id, page, x + dx, y + dy, text, color, size)
     fun withText(newText: String) = TextAnnotation(id, page, x, y, newText, color, size)
+    fun withColor(c: Int) = TextAnnotation(id, page, x, y, text, c, size)
     override fun withPage(page: Int) = TextAnnotation(id, page, x, y, text, color, size)
 
     override fun toJson(): JSONObject = JSONObject().apply {

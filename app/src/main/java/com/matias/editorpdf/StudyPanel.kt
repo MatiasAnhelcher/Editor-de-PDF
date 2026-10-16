@@ -1,6 +1,10 @@
 package com.matias.editorpdf
 
+import android.graphics.Bitmap
+import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.util.LruCache
+import android.widget.ImageView
 import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.View
@@ -12,7 +16,10 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.google.android.material.chip.Chip
+import com.google.android.material.chip.ChipGroup
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.tabs.TabLayout
 import com.matias.editorpdf.model.Annotation
@@ -46,9 +53,15 @@ class StudyPanel(
         fun goToPage(page: Int, y: Float? = null)
         fun showSearchMatch(hit: SearchHit)
         fun clearSearchMatch()
+        val currentPage: Int
+        fun pageAspect(page: Int): Float
+        fun renderThumbnail(page: Int, widthPx: Int, callback: (Bitmap?) -> Unit)
+        fun colorLabel(color: Int): String
+        fun exportSummary()
+        fun startCards()
     }
 
-    enum class Tab { OUTLINE, BOOKMARKS, HIGHLIGHTS, SEARCH }
+    enum class Tab { PAGES, OUTLINE, BOOKMARKS, HIGHLIGHTS, SEARCH }
 
     private class Row(
         val title: String,
@@ -66,6 +79,14 @@ class StudyPanel(
     private val status: TextView = root.findViewById(R.id.study_status)
     private val list: RecyclerView = root.findViewById(R.id.study_list)
     private val adapter = RowAdapter()
+    private val thumbAdapter = ThumbAdapter()
+    private val highlightTools: View = root.findViewById(R.id.highlight_tools)
+    private val filters: ChipGroup = root.findViewById(R.id.highlight_filters)
+    private var colorFilter: Int? = null
+    private val thumbs = object : LruCache<Int, Bitmap>(24 * 1024 * 1024) {
+        override fun sizeOf(key: Int, value: Bitmap) = value.allocationByteCount
+    }
+    private val pendingThumbs = HashSet<Int>()
 
     private var outline: List<OutlineEntry>? = null
     private var searchHits: List<SearchHit> = emptyList()
@@ -77,7 +98,7 @@ class StudyPanel(
     private val currentTab: Tab get() = Tab.entries[tabs.selectedTabPosition.coerceAtLeast(0)]
 
     init {
-        listOf(R.string.tab_outline, R.string.tab_bookmarks, R.string.tab_highlights, R.string.tab_search).forEach {
+        listOf(R.string.tab_pages, R.string.tab_outline, R.string.tab_bookmarks, R.string.tab_highlights, R.string.tab_search).forEach {
             tabs.addTab(tabs.newTab().setText(it))
         }
         list.layoutManager = LinearLayoutManager(activity)
@@ -88,6 +109,8 @@ class StudyPanel(
             override fun onTabReselected(tab: TabLayout.Tab) = refresh()
         })
         root.findViewById<View>(R.id.study_close).setOnClickListener { close() }
+        root.findViewById<View>(R.id.export_summary).setOnClickListener { host.exportSummary() }
+        root.findViewById<View>(R.id.start_cards).setOnClickListener { host.startCards() }
         searchInput.setOnEditorActionListener { _, actionId, event ->
             if (actionId == EditorInfo.IME_ACTION_SEARCH ||
                 (event?.keyCode == KeyEvent.KEYCODE_ENTER && event.action == KeyEvent.ACTION_DOWN)
@@ -124,15 +147,68 @@ class StudyPanel(
     fun refresh() {
         if (!isOpen) return
         searchRow.isVisible = currentTab == Tab.SEARCH
+        highlightTools.isVisible = currentTab == Tab.HIGHLIGHTS
+        if (currentTab == Tab.PAGES) {
+            if (list.adapter !== thumbAdapter) {
+                list.layoutManager = GridLayoutManager(activity, 3)
+                list.adapter = thumbAdapter
+            }
+        } else if (list.adapter !== adapter) {
+            list.layoutManager = LinearLayoutManager(activity)
+            list.adapter = adapter
+        }
         if (currentTab != Tab.SEARCH) {
             job?.cancel()
             searchProgress.isVisible = false
         }
         when (currentTab) {
+            Tab.PAGES -> showPages()
             Tab.OUTLINE -> showOutline()
             Tab.BOOKMARKS -> showBookmarks()
             Tab.HIGHLIGHTS -> showHighlights()
             Tab.SEARCH -> showSearchResults()
+        }
+    }
+
+    // --- Miniaturas --------------------------------------------------------------------------
+
+    private fun showPages() {
+        thumbAdapter.notifyDataSetChanged()
+        status.isVisible = false
+        list.post { list.scrollToPosition(host.currentPage) }
+    }
+
+    private inner class ThumbAdapter : RecyclerView.Adapter<ThumbAdapter.Holder>() {
+        inner class Holder(v: View) : RecyclerView.ViewHolder(v) {
+            val image: ImageView = v.findViewById(R.id.thumb)
+            val label: TextView = v.findViewById(R.id.label)
+            var page = -1
+        }
+
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) =
+            Holder(LayoutInflater.from(parent.context).inflate(R.layout.item_thumb, parent, false))
+
+        override fun getItemCount() = host.pageCount
+
+        override fun onBindViewHolder(holder: Holder, position: Int) {
+            holder.page = position
+            holder.label.text = (position + 1).toString()
+            holder.label.isActivated = position == host.currentPage
+            holder.label.setTypeface(null, if (position == host.currentPage) Typeface.BOLD else Typeface.NORMAL)
+            val widthPx = (110 * activity.resources.displayMetrics.density).toInt()
+            holder.image.minimumHeight = (widthPx * host.pageAspect(position)).toInt()
+            val cached = thumbs.get(position)
+            holder.image.setImageBitmap(cached)
+            if (cached == null && pendingThumbs.add(position)) {
+                host.renderThumbnail(position, widthPx) { bmp ->
+                    pendingThumbs.remove(position)
+                    if (bmp != null) {
+                        thumbs.put(position, bmp)
+                        if (holder.page == position) holder.image.setImageBitmap(bmp)
+                    }
+                }
+            }
+            holder.itemView.setOnClickListener { host.goToPage(position) }
         }
     }
 
@@ -182,9 +258,12 @@ class StudyPanel(
     // --- Resaltados y notas ----------------------------------------------------------------------
 
     private fun showHighlights() {
-        val items = host.annotations().filter {
+        val all = host.annotations().filter {
             it is TextAnnotation || (it is InkAnnotation && it.kind != InkKind.PEN)
         }.sortedWith(compareBy({ it.page }, { it.bounds.top }, { it.bounds.left }))
+        updateFilters(all)
+        val filter = colorFilter
+        val items = if (filter == null) all else all.filter { (it.color or 0xFF000000.toInt()) == filter }
 
         fun rows() = items.map { a ->
             val kind = when {
@@ -200,7 +279,9 @@ class StudyPanel(
                 is TextAnnotation -> a.color
                 is InkAnnotation -> a.color
             }
-            Row(title, "${page(a.page)} · $kind", color, 0, { host.goToPage(a.page, a.bounds.top) })
+            val meaning = host.colorLabel(color)
+            val sub = if (meaning.isNotBlank() && a !is TextAnnotation) "${page(a.page)} · $kind · $meaning" else "${page(a.page)} · $kind"
+            Row(title, sub, color, 0, { host.goToPage(a.page, a.bounds.top) })
         }
 
         setRows(rows(), if (items.isEmpty()) activity.getString(R.string.no_highlights) else null)
@@ -219,6 +300,36 @@ class StudyPanel(
                 if (!coroutineContext.isActive || currentTab != Tab.HIGHLIGHTS) return@launch
             }
             if (currentTab == Tab.HIGHLIGHTS) setRows(rows(), null)
+        }
+    }
+
+    private fun updateFilters(items: List<Annotation>) {
+        val colors = items.map { it.color or 0xFF000000.toInt() }.distinct()
+        if (colorFilter != null && colorFilter !in colors) colorFilter = null
+        val wanted = listOf<Int?>(null) + colors
+        val existing = (0 until filters.childCount).map { (filters.getChildAt(it).tag as? Int?) }
+        if (existing == wanted && filters.childCount > 0) return
+        filters.removeAllViews()
+        for (c in wanted) {
+            val chip = Chip(activity)
+            chip.tag = c
+            chip.isCheckable = true
+            chip.text = if (c == null) activity.getString(R.string.filter_all) else host.colorLabel(c).ifBlank {
+                activity.getString(R.string.filter_color)
+            }
+            if (c != null) {
+                chip.chipIcon = GradientDrawable().apply {
+                    shape = GradientDrawable.OVAL
+                    setColor(c)
+                    setSize(36, 36)
+                }
+            }
+            chip.isChecked = c == colorFilter
+            chip.setOnClickListener {
+                colorFilter = c
+                showHighlights()
+            }
+            filters.addView(chip)
         }
     }
 

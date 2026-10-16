@@ -84,4 +84,33 @@
     <string name="search_none">No se encontró «%1$s».</string>
     <string name="search_count">%1$d resultados</string>
     <string name="search_scanned">Este PDF parece escaneado (sus páginas son imágenes), así que no se puede buscar texto en él.</string>
+
+    <string name="tool_lasso">➰ Lazo</string>
+    <string name="lasso_hint">Rodea con el lápiz lo que quieras seleccionar.</string>
+    <string name="lasso_selected">%1$d seleccionados: arrástralos para moverlos o toca un color.</string>
+    <string name="delete_selection">Borrar selección</string>
+    <string name="snap_to_text">Ajustar al renglón</string>
+    <string name="color_meaning">%1$s</string>
+    <string name="rename_color">¿Qué significa este color?</string>
+    <string name="rename_color_hint">Por ejemplo: Definición</string>
+    <string name="tab_pages">Páginas</string>
+    <string name="filter_all">Todos</string>
+    <string name="filter_color">Color</string>
+    <string name="export_summary">Exportar resumen</string>
+    <string name="summary_saved">Resumen guardado</string>
+    <string name="summary_empty">No hay resaltados ni notas para exportar.</string>
+    <string name="cards">Tarjetas de repaso</string>
+    <string name="cards_none_title">No hay tarjetas para hoy</string>
+    <string name="cards_none_message">Ya repasaste todo lo pendiente. ¿Quieres repasar todas igual?</string>
+    <string name="cards_all">Repasar todas</string>
+    <string name="cards_empty">Primero resalta, subraya o escribe notas: cada una se vuelve una tarjeta.</string>
+    <string name="cards_progress">Tarjeta %1$d de %2$d · Página %3$d</string>
+    <string name="cards_done">¡Listo! Repasaste %1$d tarjetas.</string>
+    <string name="cards_show">Mostrar respuesta</string>
+    <string name="cards_goto">Ir a la página</string>
+    <string name="cards_image">Parte de la página</string>
+    <string name="grade_again">Otra vez</string>
+    <string name="grade_hard">Difícil</string>
+    <string name="grade_good">Bien</string>
+    <string name="grade_easy">Fácil</string>
 </resources>

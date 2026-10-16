@@ -23,6 +23,18 @@ class Settings(context: Context) {
         get() = prefs.getBoolean("straight_highlighter", true)
         set(v) = prefs.edit().putBoolean("straight_highlighter", v).apply()
 
+    /** Ajustar resaltados y subrayados rectos al texto del PDF. */
+    var snapToText: Boolean
+        get() = prefs.getBoolean("snap_to_text", true)
+        set(v) = prefs.edit().putBoolean("snap_to_text", v).apply()
+
+    /** Qué significa cada color (por ejemplo, amarillo = Importante). */
+    fun colorLabel(color: Int): String =
+        prefs.getString("label_${color or 0xFF000000.toInt()}", null) ?: DEFAULT_LABELS[color or 0xFF000000.toInt()].orEmpty()
+
+    fun setColorLabel(color: Int, label: String) =
+        prefs.edit().putString("label_${color or 0xFF000000.toInt()}", label.trim()).apply()
+
     fun color(tool: Tool): Int = prefs.getInt("color_${tool.name}", palette(tool).first())
     fun setColor(tool: Tool, color: Int) = prefs.edit().putInt("color_${tool.name}", color).apply()
 
@@ -35,10 +47,24 @@ class Settings(context: Context) {
 
     companion object {
         fun palette(tool: Tool): List<Int> = when (tool) {
-            Tool.HIGHLIGHTER -> listOf(0xFFFFEB3B, 0xFF76FF03, 0xFF18FFFF, 0xFFFF80AB, 0xFFFFAB40, 0xFFB388FF)
-            Tool.UNDERLINE -> listOf(0xFFD32F2F, 0xFF1565C0, 0xFF000000, 0xFF2E7D32, 0xFF6A1B9A, 0xFFEF6C00)
-            else -> listOf(0xFF000000, 0xFF1A237E, 0xFFC62828, 0xFF2E7D32, 0xFF6A1B9A, 0xFFEF6C00)
-        }.map { it.toInt() }
+            Tool.HIGHLIGHTER -> HIGHLIGHT_COLORS
+            Tool.UNDERLINE -> listOf(0xFFD32F2F, 0xFF1565C0, 0xFF000000, 0xFF2E7D32, 0xFF6A1B9A, 0xFFEF6C00).map { it.toInt() }
+            Tool.LASSO -> PEN_COLORS + HIGHLIGHT_COLORS
+            else -> PEN_COLORS
+        }
+
+        private val PEN_COLORS = listOf(0xFF000000, 0xFF1A237E, 0xFFC62828, 0xFF2E7D32, 0xFF6A1B9A, 0xFFEF6C00).map { it.toInt() }
+        private val HIGHLIGHT_COLORS =
+            listOf(0xFFFFEB3B, 0xFF76FF03, 0xFF18FFFF, 0xFFFF80AB, 0xFFFFAB40, 0xFFB388FF).map { it.toInt() }
+
+        private val DEFAULT_LABELS: Map<Int, String> = mapOf(
+            0xFFFFEB3B to "Importante",
+            0xFF76FF03 to "Definición",
+            0xFF18FFFF to "Ejemplo",
+            0xFFFF80AB to "Duda",
+            0xFFFFAB40 to "Dato o fecha",
+            0xFFB388FF to "Idea propia",
+        ).mapKeys { it.key.toInt() }
 
         fun range(tool: Tool): Range = when (tool) {
             Tool.HIGHLIGHTER -> Range(4f, 24f, 12f)

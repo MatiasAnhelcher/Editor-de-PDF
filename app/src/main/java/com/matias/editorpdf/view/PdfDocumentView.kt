@@ -3,14 +3,12 @@ package com.matias.editorpdf.view
 import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.BlendMode
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.DashPathEffect
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
-import android.text.TextPaint
 import android.util.AttributeSet
 import android.util.LruCache
 import android.util.SizeF
@@ -29,8 +27,6 @@ import com.matias.editorpdf.model.InkKind
 import com.matias.editorpdf.model.TextAnnotation
 import com.matias.editorpdf.model.Tool
 import com.matias.editorpdf.pdf.PageRenderer
-import com.matias.editorpdf.pdf.PdfAnnotationIO
-import java.util.WeakHashMap
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.abs
 import kotlin.math.ceil
@@ -52,12 +48,15 @@ class PdfDocumentView @JvmOverloads constructor(
     interface Listener {
         fun onPageChanged(page: Int, pageCount: Int)
         fun onTextRequested(page: Int, x: Float, y: Float, existing: TextAnnotation?)
+        fun onSelectionChanged(count: Int) {}
+
+        /** Se llama al terminar un resaltado o subrayado recto, para poder ajustarlo al texto. */
+        fun onStraightMarkAdded(a: InkAnnotation) {}
     }
 
     private class Hit(val page: Int, val x: Float, val y: Float)
     private class Detail(val bitmap: Bitmap, val region: RectF, val scale: Float)
-    private class InkRender(val paths: List<Path>, val widths: FloatArray)
-    private enum class Mode { NONE, NAV, DRAW, ERASE, TEXT_PRESS, MOVE_TEXT, IGNORE }
+    private enum class Mode { NONE, NAV, DRAW, ERASE, TEXT_PRESS, MOVE_TEXT, LASSO, MOVE_SELECTION, IGNORE }
 
     var listener: Listener? = null
     lateinit var settings: Settings
@@ -71,6 +70,7 @@ class PdfDocumentView @JvmOverloads constructor(
     var tool: Tool = Tool.PEN
         set(value) {
             cancelToolGesture()
+            if (value != Tool.LASSO) clearSelection()
             field = value
             invalidate()
         }
@@ -136,25 +136,17 @@ class PdfDocumentView @JvmOverloads constructor(
     private val pagePaint = Paint().apply { color = Color.WHITE }
     private val shadowPaint = Paint().apply { color = 0x22000000 }
     private val backgroundColor = 0xFFE3E5E8.toInt()
-    private val inkPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
-    private val textPaint = TextPaint(Paint.ANTI_ALIAS_FLAG)
+    private val painter = AnnotationPainter()
     private val selectionPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         color = 0xFF1E88E5.toInt()
     }
     private val searchPaint = Paint().apply { color = 0x66FF9800 }
-    private val coverPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
-    private val coverTextPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0xFF5D4037.toInt()
-        textAlign = Paint.Align.CENTER
-        isFakeBoldText = true
-    }
     private val eraserPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeWidth = 1.5f * density
         color = 0xAA555555.toInt()
     }
-    private val inkCache = WeakHashMap<InkAnnotation, InkRender>()
     private val tmpRect = RectF()
 
     // --- Gestos ----------------------------------------------------------------------------
@@ -188,6 +180,15 @@ class PdfDocumentView @JvmOverloads constructor(
     private var downY = 0f
     private var pressedText: TextAnnotation? = null
     private var movingText: TextAnnotation? = null
+
+    // Lazo: selección de anotaciones para mover, recolorear o borrar.
+    private var lassoPage = -1
+    private val lassoPath = Path()
+    private val lassoPoly = ArrayList<Float>()
+    private val selected = LinkedHashSet<String>()
+    private var selectionPage = -1
+    private var selDx = 0f
+    private var selDy = 0f
 
     private val scaleDetector = ScaleGestureDetector(context, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
         override fun onScale(d: ScaleGestureDetector): Boolean {
@@ -492,121 +493,55 @@ class PdfDocumentView @JvmOverloads constructor(
     private fun drawPageAnnotations(canvas: Canvas, page: Int, pr: RectF, s: Float) {
         val list = store?.forPage(page).orEmpty()
         val drawingHere = mode == Mode.DRAW && strokePage == page
+        val lassoHere = mode == Mode.LASSO && lassoPage == page
+        val selectionHere = selectionPage == page && selected.isNotEmpty()
+        val moveSel = mode == Mode.MOVE_SELECTION && selectionHere
         val moving = movingText?.takeIf { it.page == page }
         val searchHere = searchPage == page && searchRects.isNotEmpty()
-        if (list.isEmpty() && !drawingHere && moving == null && !searchHere) return
+        if (list.isEmpty() && !drawingHere && moving == null && !searchHere && !lassoHere) return
         canvas.save()
         canvas.clipRect(pr)
         canvas.translate(pr.left, pr.top)
         canvas.scale(s, s)
         for (a in list) {
             if (moving != null && a.id == moving.id) continue
-            if (reviewMode && a.id !in revealed && drawCover(canvas, a)) continue
-            drawAnnotation(canvas, a, cache = true)
+            if (moveSel && a.id in selected) {
+                painter.draw(canvas, a.moveBy(selDx, selDy), cache = false)
+                continue
+            }
+            if (reviewMode && a.id !in revealed && painter.drawCover(canvas, a)) continue
+            painter.draw(canvas, a, cache = true)
         }
         if (searchHere) searchRects.forEach { canvas.drawRect(it, searchPaint) }
         if (moving != null) {
-            drawAnnotation(canvas, moving, cache = false)
+            painter.draw(canvas, moving, cache = false)
             selectionPaint.strokeWidth = 1.5f * density / s
             selectionPaint.pathEffect = DashPathEffect(floatArrayOf(6f * density / s, 4f * density / s), 0f)
             val b = RectF(moving.bounds)
             b.inset(-3f, -3f)
             canvas.drawRect(b, selectionPaint)
         }
-        if (drawingHere) currentStroke()?.let { drawAnnotation(canvas, it, cache = false) }
-        canvas.restore()
-    }
-
-    /** Zona que tapa una anotación en el modo repaso (null = no se tapa, como el lápiz). */
-    private fun coverRect(a: Annotation): RectF? = when {
-        a is TextAnnotation -> RectF(a.bounds).apply { inset(-2f, -2f) }
-        a is InkAnnotation && a.kind == InkKind.UNDERLINE -> RectF(a.bounds).apply { top -= 13f }
-        a is InkAnnotation && a.kind == InkKind.HIGHLIGHTER -> RectF(a.bounds)
-        else -> null
-    }
-
-    private fun drawCover(canvas: Canvas, a: Annotation): Boolean {
-        if (a is InkAnnotation && a.kind == InkKind.HIGHLIGHTER) {
-            // Mismo trazo pero opaco: tapa el texto resaltado.
-            val r = inkCache.getOrPut(a) { buildInkRender(a) }
-            inkPaint.strokeJoin = Paint.Join.ROUND
-            inkPaint.strokeCap = if (a.straight) Paint.Cap.BUTT else Paint.Cap.ROUND
-            inkPaint.color = a.color or 0xFF000000.toInt()
-            inkPaint.blendMode = null
-            r.paths.forEachIndexed { i, p ->
-                inkPaint.strokeWidth = r.widths[i] * 1.15f
-                canvas.drawPath(p, inkPaint)
+        if (drawingHere) currentStroke()?.let { painter.draw(canvas, it, cache = false) }
+        if (lassoHere || selectionHere) {
+            selectionPaint.strokeWidth = 1.5f * density / s
+            selectionPaint.pathEffect = DashPathEffect(floatArrayOf(6f * density / s, 4f * density / s), 0f)
+            if (lassoHere) canvas.drawPath(lassoPath, selectionPaint)
+            if (selectionHere) selectionBounds()?.let { b ->
+                b.offset(if (moveSel) selDx else 0f, if (moveSel) selDy else 0f)
+                canvas.drawRect(b, selectionPaint)
             }
-            return true
         }
-        val rect = coverRect(a) ?: return false
-        coverPaint.color = if (a is TextAnnotation) 0xFFFFF59D.toInt() else 0xFFCFD8DC.toInt()
-        canvas.drawRoundRect(rect, 2f, 2f, coverPaint)
-        coverTextPaint.textSize = min(rect.height() * 0.8f, 14f)
-        canvas.drawText("?", rect.centerX(), rect.centerY() + coverTextPaint.textSize * 0.35f, coverTextPaint)
-        return true
+        canvas.restore()
     }
 
     private fun onReviewTap(x: Float, y: Float) {
         val hit = screenToPage(x, y) ?: return
         val pad = 8f * density / scale
         val a = store?.forPage(hit.page)?.lastOrNull { a ->
-            coverRect(a)?.let { r -> hit.x >= r.left - pad && hit.x <= r.right + pad && hit.y >= r.top - pad && hit.y <= r.bottom + pad } == true
+            AnnotationPainter.coverRect(a)?.let { r -> hit.x >= r.left - pad && hit.x <= r.right + pad && hit.y >= r.top - pad && hit.y <= r.bottom + pad } == true
         } ?: return
         if (!revealed.add(a.id)) revealed.remove(a.id)
         invalidate()
-    }
-
-    private fun drawAnnotation(canvas: Canvas, a: Annotation, cache: Boolean) {
-        when (a) {
-            is InkAnnotation -> drawInk(canvas, a, cache)
-            is TextAnnotation -> {
-                textPaint.color = a.color or 0xFF000000.toInt()
-                textPaint.textSize = a.size
-                a.lines.forEachIndexed { i, line -> canvas.drawText(line, a.x, a.baseline(i), textPaint) }
-            }
-        }
-    }
-
-    private fun drawInk(canvas: Canvas, a: InkAnnotation, cache: Boolean) {
-        if (a.pointCount == 0) return
-        val r = if (cache) inkCache.getOrPut(a) { buildInkRender(a) } else buildInkRender(a)
-        inkPaint.strokeJoin = Paint.Join.ROUND
-        inkPaint.strokeCap = if (a.kind == InkKind.HIGHLIGHTER && a.straight) Paint.Cap.BUTT else Paint.Cap.ROUND
-        if (a.kind == InkKind.HIGHLIGHTER) {
-            val alpha = (PdfAnnotationIO.HIGHLIGHT_ALPHA * 255).roundToInt()
-            inkPaint.color = (a.color and 0x00FFFFFF) or (alpha shl 24)
-            inkPaint.blendMode = BlendMode.MULTIPLY
-        } else {
-            inkPaint.color = a.color or 0xFF000000.toInt()
-            inkPaint.blendMode = null
-        }
-        r.paths.forEachIndexed { i, p ->
-            inkPaint.strokeWidth = r.widths[i]
-            canvas.drawPath(p, inkPaint)
-        }
-        inkPaint.blendMode = null
-    }
-
-    private fun buildInkRender(a: InkAnnotation): InkRender {
-        if (a.kind == InkKind.PEN) {
-            val runs = a.penRuns()
-            val paths = runs.map { run ->
-                Path().apply {
-                    moveTo(a.x(run.from), a.y(run.from))
-                    if (run.from == run.to) lineTo(a.x(run.from) + 0.01f, a.y(run.from))
-                    else for (i in run.from + 1..run.to) lineTo(a.x(i), a.y(i))
-                }
-            }
-            return InkRender(paths, FloatArray(runs.size) { runs[it].width })
-        }
-        val idx = a.drawnIndices()
-        val path = Path().apply {
-            moveTo(a.x(idx[0]), a.y(idx[0]))
-            if (idx.size == 1) lineTo(a.x(idx[0]) + 0.01f, a.y(idx[0]))
-            for (k in 1 until idx.size) lineTo(a.x(idx[k]), a.y(idx[k]))
-        }
-        return InkRender(listOf(path), floatArrayOf(a.width))
     }
 
     // ======================================================================================
@@ -673,6 +608,7 @@ class PdfDocumentView @JvmOverloads constructor(
             Mode.DRAW -> moveStroke(e)
             Mode.ERASE -> moveErase(e)
             Mode.TEXT_PRESS, Mode.MOVE_TEXT -> moveText(e)
+            Mode.LASSO, Mode.MOVE_SELECTION -> moveLasso(e)
             else -> Unit
         }
     }
@@ -712,6 +648,7 @@ class PdfDocumentView @JvmOverloads constructor(
         when {
             sideButton || tool == Tool.ERASER -> startErase(x, y)
             tool == Tool.TEXT -> startTextPress(x, y)
+            tool == Tool.LASSO -> startLasso(x, y)
             else -> startStroke(x, y, pressure(e, idx, -1))
         }
     }
@@ -728,6 +665,8 @@ class PdfDocumentView @JvmOverloads constructor(
                 val hit = screenToPage(downX, downY)
                 if (hit != null) listener?.onTextRequested(hit.page, hit.x, hit.y, pressedText)
             }
+            Mode.LASSO -> finishLasso()
+            Mode.MOVE_SELECTION -> finishMoveSelection()
             Mode.MOVE_TEXT -> {
                 val from = pressedText
                 val to = movingText
@@ -743,6 +682,11 @@ class PdfDocumentView @JvmOverloads constructor(
     }
 
     private fun cancelToolGesture() {
+        if (mode == Mode.LASSO) lassoPath.reset()
+        if (mode == Mode.MOVE_SELECTION) {
+            selDx = 0f
+            selDy = 0f
+        }
         when (mode) {
             Mode.ERASE -> finishErase()
             Mode.DRAW -> strokeCount = 0
@@ -971,6 +915,7 @@ class PdfDocumentView @JvmOverloads constructor(
             current.points, current.straight,
         )
         store?.commit(AnnotationStore.Change(emptyList(), listOf(a)))
+        if (a.straight) listener?.onStraightMarkAdded(a)
     }
 
     // --- Borrador ----------------------------------------------------------------------------
@@ -1062,6 +1007,138 @@ class PdfDocumentView @JvmOverloads constructor(
             movingText = t.moved(dx, dy)
             invalidate()
         }
+    }
+
+    // --- Lazo --------------------------------------------------------------------------------
+
+    val selectionCount: Int get() = selected.size
+
+    fun clearSelection() {
+        if (selected.isEmpty() && selectionPage < 0) return
+        selected.clear()
+        selectionPage = -1
+        listener?.onSelectionChanged(0)
+        invalidate()
+    }
+
+    fun recolorSelection(color: Int) {
+        val st = store ?: return
+        val old = selected.mapNotNull { st.find(it) }
+        if (old.isEmpty()) return
+        st.commit(AnnotationStore.Change(old, old.map { it.recolored(color) }))
+    }
+
+    fun deleteSelection() {
+        val st = store ?: return
+        val old = selected.mapNotNull { st.find(it) }
+        if (old.isNotEmpty()) st.commit(AnnotationStore.Change(old, emptyList()))
+        clearSelection()
+    }
+
+    private fun selectionBounds(): RectF? {
+        val st = store ?: return null
+        var r: RectF? = null
+        for (id in selected) {
+            val a = st.find(id) ?: continue
+            if (r == null) r = RectF(a.bounds) else r.union(a.bounds)
+        }
+        r?.inset(-4f, -4f)
+        return r
+    }
+
+    private fun startLasso(x: Float, y: Float) {
+        val hit = screenToPage(x, y)
+        if (hit == null) {
+            mode = Mode.IGNORE
+            return
+        }
+        val b = if (hit.page == selectionPage) selectionBounds() else null
+        if (b != null && b.contains(hit.x, hit.y)) {
+            mode = Mode.MOVE_SELECTION
+            downX = x
+            downY = y
+            selDx = 0f
+            selDy = 0f
+            return
+        }
+        clearSelection()
+        mode = Mode.LASSO
+        lassoPage = hit.page
+        lassoPoly.clear()
+        lassoPath.reset()
+        lassoPath.moveTo(hit.x, hit.y)
+        lassoPoly.add(hit.x)
+        lassoPoly.add(hit.y)
+        invalidate()
+    }
+
+    private fun moveLasso(e: MotionEvent) {
+        val idx = e.findPointerIndex(activeId)
+        if (idx < 0) return
+        val s = scale
+        if (mode == Mode.MOVE_SELECTION) {
+            selDx = (e.getX(idx) - downX) / s
+            selDy = (e.getY(idx) - downY) / s
+            invalidate()
+            return
+        }
+        val sz = sizes[lassoPage]
+        val px = ((e.getX(idx) - offX) / s - pageLefts[lassoPage]).coerceIn(0f, sz.width)
+        val py = ((e.getY(idx) - offY) / s - pageTops[lassoPage]).coerceIn(0f, sz.height)
+        lassoPath.lineTo(px, py)
+        lassoPoly.add(px)
+        lassoPoly.add(py)
+        invalidate()
+    }
+
+    private fun finishLasso() {
+        lassoPath.reset()
+        val st = store
+        if (st == null || lassoPoly.size < 6) {
+            mode = Mode.NONE
+            return
+        }
+        val poly = lassoPoly.toFloatArray()
+        for (a in st.forPage(lassoPage)) {
+            val inside = when (a) {
+                is TextAnnotation -> pointInPolygon(poly, a.bounds.centerX(), a.bounds.centerY())
+                is InkAnnotation -> {
+                    val idx = a.drawnIndices()
+                    idx.count { pointInPolygon(poly, a.x(it), a.y(it)) } * 2 >= idx.size && idx.isNotEmpty()
+                }
+            }
+            if (inside) selected.add(a.id)
+        }
+        selectionPage = if (selected.isEmpty()) -1 else lassoPage
+        listener?.onSelectionChanged(selected.size)
+        mode = Mode.NONE
+    }
+
+    private fun finishMoveSelection() {
+        val st = store
+        val dx = selDx
+        val dy = selDy
+        selDx = 0f
+        selDy = 0f
+        mode = Mode.NONE
+        if (st == null || (abs(dx) < 0.5f && abs(dy) < 0.5f)) return
+        val old = selected.mapNotNull { st.find(it) }
+        if (old.isNotEmpty()) st.commit(AnnotationStore.Change(old, old.map { it.moveBy(dx, dy) }))
+    }
+
+    private fun pointInPolygon(poly: FloatArray, x: Float, y: Float): Boolean {
+        var inside = false
+        val n = poly.size / 2
+        var j = n - 1
+        for (i in 0 until n) {
+            val xi = poly[i * 2]
+            val yi = poly[i * 2 + 1]
+            val xj = poly[j * 2]
+            val yj = poly[j * 2 + 1]
+            if ((yi > y) != (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inside = !inside
+            j = i
+        }
+        return inside
     }
 
     companion object {
