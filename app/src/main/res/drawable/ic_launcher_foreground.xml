@@ -4,18 +4,17 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Sombra suave del libro -->
-    <path android:fillColor="#33000000" android:pathData="M54,43C46,39 37,38 31,39V75C37,74 46,75 54,79C62,75 71,74 77,75V39C71,38 62,39 54,43Z" />
-    <!-- Página izquierda -->
-    <path android:fillColor="#FFEFE7D4" android:pathData="M54,40C46,36 36,35 30,36V72C36,71 46,72 54,76Z" />
-    <!-- Página derecha -->
-    <path android:fillColor="#FFFAF6EC" android:pathData="M54,40C62,36 72,35 78,36V72C72,71 62,72 54,76Z" />
-    <!-- Renglones -->
-    <path android:fillColor="#FFB3B9C6" android:pathData="M35,45.2h14v1.6h-14z M35,51.2h14v1.6h-14z M35,57.2h14v1.6h-14z M35,63.2h10v1.6h-10z" />
-    <!-- Resaltado dorado -->
-    <path android:fillColor="#FFE6B652" android:pathData="M58,48.6h16v5.6h-16z" />
-    <path android:fillColor="#FF3A4766" android:pathData="M59,50.6h14v1.6h-14z" />
-    <path android:fillColor="#FFB3B9C6" android:pathData="M59,57.2h14v1.6h-14z M59,63.2h10v1.6h-10z" />
-    <!-- Cinta marcapáginas -->
-    <path android:fillColor="#FFC8963A" android:pathData="M69,36.6h5v10.4l-2.5,-2.2l-2.5,2.2z" />
+    <path android:fillColor="#40000000" android:pathData="M38,31h25l11,11v39a2,2 0 0 1 -2,2h-34a2,2 0 0 1 -2,-2v-48a2,2 0 0 1 2,-2z" />
+    <path android:fillColor="#FFFDFBF6" android:pathData="M37,28h25l11,11v39a2,2 0 0 1 -2,2h-34a2,2 0 0 1 -2,-2v-48a2,2 0 0 1 2,-2z" />
+    <path android:fillColor="#FFE9DFD3" android:pathData="M62,28l11,11h-9a2,2 0 0 1 -2,-2z" />
+    <path android:fillColor="#00000000" android:strokeColor="#FFC4322A" android:strokeWidth="2.6" android:strokeLineCap="round" android:strokeLineJoin="round"
+                android:pathData="M42,52V43H46a2.6,2.6 0 0 1 0,5.2H42 M50.5,52V43h2.4a4.5,4.5 0 0 1 0,9z M60.5,52V43h5 M60.5,47.4h4" />
+    <path android:fillColor="#FFC9CDD6" android:pathData="M41,57.4h26v1.6h-26z M41,68.4h18v1.6h-18z" />
+    <path android:fillColor="#FFF0C25A" android:pathData="M40,60.4h24v5.6h-24z" />
+    <path android:fillColor="#FF3A4766" android:pathData="M41,62.4h22v1.6h-22z" />
+    <group android:pivotX="68" android:pivotY="70" android:rotation="38">
+                <path android:fillColor="#FF1F2A44" android:pathData="M65.5,57h5v17h-5z" />
+                <path android:fillColor="#FFD9A441" android:pathData="M65.5,74h5l-2.5,5z" />
+                <path android:fillColor="#FF3C4C78" android:pathData="M65.5,57h5v2.4h-5z" />
+            </group>
 </vector>

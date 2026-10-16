@@ -32,6 +32,7 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.progressindicator.LinearProgressIndicator
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -72,6 +73,8 @@ class MainActivity : AppCompatActivity() {
 
         stats = StudyStats(this)
         findViewById<View>(R.id.goal_box).setOnClickListener { chooseGoal() }
+        findViewById<View>(R.id.reminder_button).setOnClickListener { chooseReminder() }
+        Reminders.schedule(this)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             // Al terminar la animación de apertura, el logo se desvanece suavemente.
             splashScreen.setOnExitAnimationListener { splash ->
@@ -88,7 +91,10 @@ class MainActivity : AppCompatActivity() {
         findViewById<MaterialToolbar>(R.id.toolbar).apply {
             inflateMenu(R.menu.main)
             setOnMenuItemClickListener {
-                if (it.itemId == R.id.action_updates) checkForUpdates(manual = true)
+                when (it.itemId) {
+                    R.id.action_updates -> checkForUpdates(manual = true)
+                    R.id.action_reminder -> chooseReminder()
+                }
                 true
             }
         }
@@ -269,7 +275,80 @@ class MainActivity : AppCompatActivity() {
             goal,
             animate = !statsAnimated,
         )
+        findViewById<com.google.android.material.button.MaterialButton>(R.id.reminder_button).text =
+            if (Reminders.isEnabled(this)) {
+                getString(R.string.reminder_at, Reminders.time(this).format(java.time.format.DateTimeFormatter.ofPattern("HH:mm")))
+            } else {
+                getString(R.string.reminder_menu)
+            }
         statsAnimated = true
+    }
+
+    // --- Recordatorio diario --------------------------------------------------------------------
+
+    private var pendingReminder: java.time.LocalTime? = null
+
+    private val notificationPermission =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            val at = pendingReminder ?: return@registerForActivityResult
+            pendingReminder = null
+            if (granted) saveReminder(at) else Snackbar.make(list, R.string.reminder_need_permission, Snackbar.LENGTH_LONG).show()
+        }
+
+    private fun chooseReminder() {
+        val hours = listOf(8, 12, 15, 18, 20, 22)
+        val fmt = java.time.format.DateTimeFormatter.ofPattern("HH:mm")
+        val labels = listOf(getString(R.string.reminder_off)) +
+            hours.map { getString(R.string.reminder_at, java.time.LocalTime.of(it, 0).format(fmt)) } +
+            getString(R.string.reminder_other)
+        val current = if (!Reminders.isEnabled(this)) 0 else {
+            val t = Reminders.time(this)
+            if (t.minute == 0 && t.hour in hours) hours.indexOf(t.hour) + 1 else labels.size - 1
+        }
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.reminder_set)
+            .setSingleChoiceItems(labels.toTypedArray(), current) { d, which ->
+                d.dismiss()
+                when (which) {
+                    0 -> {
+                        Reminders.disable(this)
+                        refreshStats()
+                    }
+                    labels.size - 1 -> pickReminderTime()
+                    else -> requestReminder(java.time.LocalTime.of(hours[which - 1], 0))
+                }
+            }
+            .show()
+    }
+
+    private fun pickReminderTime() {
+        val t = Reminders.time(this)
+        val picker = com.google.android.material.timepicker.MaterialTimePicker.Builder()
+            .setTimeFormat(com.google.android.material.timepicker.TimeFormat.CLOCK_24H)
+            .setHour(t.hour)
+            .setMinute(t.minute)
+            .setTitleText(R.string.reminder_set)
+            .build()
+        picker.addOnPositiveButtonClickListener {
+            requestReminder(java.time.LocalTime.of(picker.hour, picker.minute))
+        }
+        picker.show(supportFragmentManager, "reminder_time")
+    }
+
+    private fun requestReminder(at: java.time.LocalTime) {
+        if (Reminders.canNotify(this)) {
+            saveReminder(at)
+        } else if (Build.VERSION.SDK_INT >= 33) {
+            pendingReminder = at
+            notificationPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
+    private fun saveReminder(at: java.time.LocalTime) {
+        Reminders.enable(this, at)
+        refreshStats()
+        val text = at.format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))
+        Snackbar.make(list, getString(R.string.reminder_saved, text), Snackbar.LENGTH_LONG).show()
     }
 
     private fun chooseGoal() {
