@@ -17,10 +17,11 @@ Cada cambio en `main` publica una versión nueva. Los APK de otras ramas quedan 
 |---|---|
 | ✋ Mover | Desplazarse y hacer zoom (también con el S Pen) |
 | ✏️ Lápiz | Escritura a mano, sensible a la presión del S Pen |
-| 🖍️ Resaltar | Resaltador transparente; con «Trazo recto» queda una línea prolija (se endereza sola si está casi horizontal) |
-| 〰️ Subrayar | Línea recta fina para subrayar |
+| 🖍️ Resaltar | Resaltador transparente. Con «Trazo recto» y «Ajustar al renglón» se acomoda solo a la altura del renglón y a las palabras que tocaste, sin tapar el texto (también en PDFs escaneados) |
+| 〰️ Subrayar | Línea recta que se ubica justo debajo del renglón |
 | 🔤 Texto | Toca la página para escribir una nota. Toca una nota para editarla o borrarla; arrástrala para moverla |
 | 🧽 Borrar | Borra trazos y notas completas al pasar por encima |
+| ➰ Lazo | Rodea trazos y notas para seleccionarlos: arrástralos para moverlos, toca un color para cambiarlo o bórralos |
 
 ### Para estudiar
 
@@ -28,6 +29,10 @@ Cada cambio en `main` publica una versión nueva. Los APK de otras ramas quedan 
 - **Panel de estudio** (ícono de lista): índice del libro (si el PDF lo trae), páginas marcadas y la lista de todos tus resaltados, subrayados y notas con el texto que resaltaste. Toca cualquiera para ir a esa página.
 - **Marcar página** (ícono de marcador): guarda la página actual para volver rápido.
 - **Modo repaso** (ícono de ojo): tapa lo que resaltaste, subrayaste y anotaste. Intenta recordarlo y toca para destapar.
+- **Colores con significado**: cada color del resaltador tiene un sentido (amarillo Importante, verde Definición, celeste Ejemplo, rosa Duda, naranja Dato o fecha, violeta Idea propia). Mantén apretado un color para renombrarlo. En la lista de resaltados puedes filtrar por color.
+- **Miniaturas**: la pestaña «Páginas» del panel muestra todas las páginas para saltar rápido.
+- **Exportar resumen** (menú ⋮ o panel): arma un PDF aparte con todo lo resaltado y anotado, ordenado por página y con su color.
+- **Tarjetas de repaso** (menú ⋮ o modo repaso): cada resaltado se vuelve una tarjeta con el texto tapado. Calificas qué tan bien lo recordabas y la app te la vuelve a mostrar en el momento justo (repetición espaciada).
 
 ### Uso general
 

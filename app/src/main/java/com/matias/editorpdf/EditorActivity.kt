@@ -2,7 +2,9 @@ package com.matias.editorpdf
 
 import android.content.Intent
 import android.content.res.ColorStateList
+import android.graphics.Bitmap
 import android.graphics.Color
+import android.graphics.RectF
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Bundle
@@ -31,10 +33,15 @@ import com.google.android.material.slider.Slider
 import com.google.android.material.snackbar.Snackbar
 import com.matias.editorpdf.model.Annotation
 import com.matias.editorpdf.model.AnnotationStore
+import com.matias.editorpdf.model.InkAnnotation
+import com.matias.editorpdf.model.InkKind
 import com.matias.editorpdf.model.TextAnnotation
 import com.matias.editorpdf.model.Tool
 import com.matias.editorpdf.pdf.DocumentSession
+import com.matias.editorpdf.pdf.ImageSnap
 import com.matias.editorpdf.pdf.PageRenderer
+import com.matias.editorpdf.pdf.TextSnap
+import com.matias.editorpdf.view.AnnotationPainter
 import com.matias.editorpdf.pdf.SearchHit
 import com.matias.editorpdf.pdf.StudyText
 import com.matias.editorpdf.pdf.WriteDeniedException
@@ -62,6 +69,10 @@ class EditorActivity : AppCompatActivity(), PdfDocumentView.Listener {
     private lateinit var widthLabel: TextView
     private lateinit var straightCheck: CheckBox
     private lateinit var toolPanel: View
+    private lateinit var colorMeaning: TextView
+    private lateinit var snapCheck: CheckBox
+    private lateinit var lassoHint: TextView
+    private lateinit var selectionDelete: View
     private lateinit var reviewBar: View
     private lateinit var studyPanel: StudyPanel
     private lateinit var bookmarks: Bookmarks
@@ -73,6 +84,7 @@ class EditorActivity : AppCompatActivity(), PdfDocumentView.Listener {
     private var session: DocumentSession? = null
     private var renderer: PageRenderer? = null
     private var pageCount = 0
+    private var pageSizes: List<android.util.SizeF> = emptyList()
     private var docName = ""
     private var saving = false
     private val ioScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -85,6 +97,7 @@ class EditorActivity : AppCompatActivity(), PdfDocumentView.Listener {
             R.id.tool_underline to Tool.UNDERLINE,
             R.id.tool_text to Tool.TEXT,
             R.id.tool_eraser to Tool.ERASER,
+            R.id.tool_lasso to Tool.LASSO,
         )
     }
 
@@ -112,6 +125,12 @@ class EditorActivity : AppCompatActivity(), PdfDocumentView.Listener {
         widthLabel = findViewById(R.id.width_label)
         straightCheck = findViewById(R.id.straight_check)
         toolPanel = findViewById(R.id.tool_panel)
+        colorMeaning = findViewById(R.id.color_meaning)
+        snapCheck = findViewById(R.id.snap_check)
+        lassoHint = findViewById(R.id.lasso_hint)
+        selectionDelete = findViewById(R.id.selection_delete)
+        selectionDelete.setOnClickListener { pdfView.deleteSelection() }
+        findViewById<View>(R.id.review_cards).setOnClickListener { startCards() }
         reviewBar = findViewById(R.id.review_bar)
         bookmarks = Bookmarks(this)
         studyPanel = StudyPanel(this, findViewById(R.id.study_panel), studyHost)
@@ -186,6 +205,7 @@ class EditorActivity : AppCompatActivity(), PdfDocumentView.Listener {
                 renderer = loaded.renderer
                 studyText = StudyText(s.workFile)
                 pageCount = loaded.sizes.size
+                pageSizes = loaded.sizes
                 docName = loaded.name
                 toolbar.title = loaded.name
                 recents.touch(s.uri, loaded.name)
@@ -327,6 +347,8 @@ class EditorActivity : AppCompatActivity(), PdfDocumentView.Listener {
                 R.id.action_save -> save()
                 R.id.action_save_copy -> if (renderer != null) saveCopyLauncher.launch(copyName())
                 R.id.action_goto -> showGoToPage()
+                R.id.action_cards -> startCards()
+                R.id.action_export -> exportSummary()
                 R.id.action_share -> share()
                 R.id.action_finger -> {
                     settings.stylusOnly = !settings.stylusOnly
@@ -393,6 +415,105 @@ class EditorActivity : AppCompatActivity(), PdfDocumentView.Listener {
             }
         }
         override fun clearSearchMatch() = pdfView.clearSearchMatch()
+        override val currentPage: Int get() = pdfView.currentPage
+        override fun pageAspect(page: Int): Float =
+            pageSizes.getOrNull(page)?.let { it.height / it.width } ?: 1.4f
+        override fun renderThumbnail(page: Int, widthPx: Int, callback: (Bitmap?) -> Unit) {
+            val r = renderer ?: return callback(null)
+            val sz = pageSizes.getOrNull(page) ?: return callback(null)
+            r.render(page, RectF(0f, 0f, sz.width, sz.height), widthPx / sz.width, isNeeded = { true }, callback = callback)
+        }
+        override fun colorLabel(color: Int): String = settings.colorLabel(color)
+        override fun exportSummary() = this@EditorActivity.exportSummary()
+        override fun startCards() = this@EditorActivity.startCards()
+    }
+
+    // --- Resumen y tarjetas ------------------------------------------------------------------
+
+    private val summaryLauncher =
+        registerForActivityResult(ActivityResultContracts.CreateDocument("application/pdf")) { uri ->
+            if (uri != null) writeSummary(uri)
+        }
+
+    private fun studyItems(): List<Annotation> =
+        store.all().filter { AnnotationPainter.isStudyItem(it) }
+            .sortedWith(compareBy({ it.page }, { it.bounds.top }, { it.bounds.left }))
+
+    private fun exportSummary() {
+        if (renderer == null) return
+        if (studyItems().isEmpty()) {
+            Toast.makeText(this, R.string.summary_empty, Toast.LENGTH_LONG).show()
+            return
+        }
+        val base = docName.removeSuffix(".pdf").removeSuffix(".PDF").ifBlank { "documento" }
+        summaryLauncher.launch("Resumen - $base.pdf")
+    }
+
+    private fun writeSummary(target: Uri) {
+        val items = studyItems()
+        val text = studyText
+        progress.isVisible = true
+        lifecycleScope.launch {
+            val result = runCatching {
+                withContext(Dispatchers.IO) {
+                    val rows = items.map { a ->
+                        val body = when (a) {
+                            is TextAnnotation -> a.text
+                            else -> {
+                                val area = RectF(a.bounds)
+                                if ((a as InkAnnotation).kind == InkKind.UNDERLINE) area.top -= 14f
+                                text?.let { t -> runCatching { t.textIn(a.page, area) }.getOrNull() }.orEmpty()
+                            }
+                        }
+                        val meaning = if (a is TextAnnotation) "" else settings.colorLabel(a.color)
+                        val label = SummaryExporter.kindName(a) + if (meaning.isNotBlank()) " · $meaning" else ""
+                        SummaryExporter.Item(a, body, label)
+                    }
+                    val out = contentResolver.openOutputStream(target, "wt") ?: throw FileNotFoundException()
+                    out.use { SummaryExporter.write(it, docName.removeSuffix(".pdf"), rows) }
+                }
+            }
+            progress.isVisible = false
+            result.onSuccess { Toast.makeText(this@EditorActivity, R.string.summary_saved, Toast.LENGTH_SHORT).show() }
+                .onFailure { e ->
+                    MaterialAlertDialogBuilder(this@EditorActivity)
+                        .setTitle(R.string.error_title)
+                        .setMessage(e.message ?: e.javaClass.simpleName)
+                        .setPositiveButton(android.R.string.ok, null)
+                        .show()
+                }
+        }
+    }
+
+    private fun startCards(all: Boolean = false) {
+        val s = session ?: return
+        val r = renderer ?: return
+        val items = studyItems()
+        if (items.isEmpty()) {
+            Toast.makeText(this, R.string.cards_empty, Toast.LENGTH_LONG).show()
+            return
+        }
+        val schedule = CardSchedule(this, s.uri)
+        val due = if (all) items else items.filter { schedule.isDue(it.id) }
+        if (due.isEmpty()) {
+            MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.cards_none_title)
+                .setMessage(R.string.cards_none_message)
+                .setPositiveButton(R.string.cards_all) { _, _ -> startCards(all = true) }
+                .setNegativeButton(android.R.string.cancel, null)
+                .show()
+            return
+        }
+        FlashcardSession(
+            activity = this,
+            renderer = r,
+            pageWidth = { pageSizes.getOrNull(it)?.width ?: 612f },
+            pageHeight = { pageSizes.getOrNull(it)?.height ?: 792f },
+            pageAnnotations = { store.forPage(it) },
+            schedule = schedule,
+            cards = due,
+            onGoToPage = { a -> pdfView.scrollToPagePoint(a.page, a.bounds.top) },
+        ).start()
     }
 
     /** En pantallas angostas (tablet vertical dividida, teléfono) el panel tapa la página: lo cerramos. */
@@ -452,6 +573,8 @@ class EditorActivity : AppCompatActivity(), PdfDocumentView.Listener {
         }
         straightCheck.isChecked = settings.straightHighlighter
         straightCheck.setOnCheckedChangeListener { _, checked -> settings.straightHighlighter = checked }
+        snapCheck.isChecked = settings.snapToText
+        snapCheck.setOnCheckedChangeListener { _, checked -> settings.snapToText = checked }
         widthSlider.addOnChangeListener { _, value, fromUser ->
             if (fromUser) {
                 settings.setWidth(pdfView.tool, value)
@@ -474,7 +597,8 @@ class EditorActivity : AppCompatActivity(), PdfDocumentView.Listener {
         if (!hasOptions) return
 
         swatches.removeAllViews()
-        val selected = settings.color(tool)
+        val lasso = tool == Tool.LASSO
+        val selected = if (lasso) -1 else settings.color(tool)
         val size = (30 * resources.displayMetrics.density).roundToInt()
         val gap = (6 * resources.displayMetrics.density).roundToInt()
         for (c in Settings.palette(tool)) {
@@ -490,10 +614,37 @@ class EditorActivity : AppCompatActivity(), PdfDocumentView.Listener {
             }
             v.contentDescription = getString(R.string.color)
             v.setOnClickListener {
-                settings.setColor(tool, c)
-                refreshOptions()
+                if (lasso) {
+                    pdfView.recolorSelection(c)
+                } else {
+                    settings.setColor(tool, c)
+                    refreshOptions()
+                }
+            }
+            if (tool == Tool.HIGHLIGHTER || tool == Tool.UNDERLINE) {
+                v.setOnLongClickListener {
+                    renameColor(c)
+                    true
+                }
             }
             swatches.addView(v, LinearLayout.LayoutParams(size, size).apply { marginEnd = gap })
+        }
+
+        colorMeaning.isVisible = tool == Tool.HIGHLIGHTER || tool == Tool.UNDERLINE
+        colorMeaning.text = settings.colorLabel(selected).ifBlank { getString(R.string.rename_color) }
+        snapCheck.isVisible = tool == Tool.HIGHLIGHTER || tool == Tool.UNDERLINE
+        lassoHint.isVisible = lasso
+        selectionDelete.isVisible = lasso && pdfView.selectionCount > 0
+        lassoHint.text = if (lasso && pdfView.selectionCount > 0) {
+            getString(R.string.lasso_selected, pdfView.selectionCount)
+        } else {
+            getString(R.string.lasso_hint)
+        }
+        widthLabel.isVisible = !lasso
+        widthSlider.isVisible = !lasso
+        if (lasso) {
+            straightCheck.isVisible = false
+            return
         }
 
         val range = Settings.range(tool)
@@ -510,6 +661,25 @@ class EditorActivity : AppCompatActivity(), PdfDocumentView.Listener {
         widthSlider.thumbTintList = ColorStateList.valueOf(settings.color(tool) or 0xFF000000.toInt())
     }
 
+    private fun renameColor(color: Int) {
+        val input = EditText(this).apply {
+            setText(settings.colorLabel(color))
+            setSelection(text.length)
+            hint = getString(R.string.rename_color_hint)
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+        }
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.rename_color)
+            .setView(wrap(input))
+            .setPositiveButton(android.R.string.ok) { _, _ ->
+                settings.setColorLabel(color, input.text.toString())
+                refreshOptions()
+                if (studyPanel.isOpen) studyPanel.refresh()
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
     private fun updateWidthLabel(tool: Tool, value: Float) {
         val v = "%.1f".format(value)
         widthLabel.text = if (tool == Tool.TEXT) getString(R.string.text_size, v) else getString(R.string.stroke_width, v)
@@ -520,6 +690,24 @@ class EditorActivity : AppCompatActivity(), PdfDocumentView.Listener {
     override fun onPageChanged(page: Int, pageCount: Int) {
         pageIndicator.text = getString(R.string.page_indicator, page + 1, pageCount)
         updateBookmarkIcon()
+    }
+
+    override fun onSelectionChanged(count: Int) {
+        if (pdfView.tool == Tool.LASSO) refreshOptions()
+    }
+
+    override fun onStraightMarkAdded(a: InkAnnotation) {
+        if (!settings.snapToText) return
+        val r = renderer ?: return
+        val t = studyText
+        val sz = pageSizes.getOrNull(a.page) ?: return
+        lifecycleScope.launch {
+            val snapped = withContext(Dispatchers.IO) {
+                (t?.let { runCatching { TextSnap.snap(it, a) }.getOrNull() })
+                    ?: runCatching { ImageSnap.snap(r, a, sz.width, sz.height) }.getOrNull()
+            }
+            if (!snapped.isNullOrEmpty()) store.amendLast(a, snapped)
+        }
     }
 
     override fun onTextRequested(page: Int, x: Float, y: Float, existing: TextAnnotation?) {

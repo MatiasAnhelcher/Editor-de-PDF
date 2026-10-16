@@ -83,6 +83,14 @@
             android:text="@string/review_hide_all" />
 
         <com.google.android.material.button.MaterialButton
+            android:id="@+id/review_cards"
+            style="?attr/materialButtonOutlinedStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="@string/cards" />
+
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/review_exit"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -108,10 +116,22 @@
             android:paddingHorizontal="4dp">
 
             <LinearLayout
-                android:id="@+id/swatches"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal" />
+                android:orientation="vertical">
+
+                <LinearLayout
+                    android:id="@+id/swatches"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal" />
+
+                <TextView
+                    android:id="@+id/color_meaning"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textAppearance="?attr/textAppearanceBodySmall" />
+            </LinearLayout>
 
             <TextView
                 android:id="@+id/width_label"
@@ -136,6 +156,28 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/straight_line" />
+
+            <CheckBox
+                android:id="@+id/snap_check"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/snap_to_text" />
+
+            <TextView
+                android:id="@+id/lasso_hint"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:text="@string/lasso_hint"
+                android:textAppearance="?attr/textAppearanceBodyMedium" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/selection_delete"
+                style="?attr/materialButtonOutlinedStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/delete_selection" />
         </LinearLayout>
 
         <HorizontalScrollView
@@ -184,6 +226,13 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/tool_text" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/tool_lasso"
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/tool_lasso" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/tool_eraser"

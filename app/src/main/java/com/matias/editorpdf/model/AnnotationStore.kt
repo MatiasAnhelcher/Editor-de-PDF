@@ -52,6 +52,20 @@ class AnnotationStore {
 
     fun record(change: Change) = push(change)
 
+    /**
+     * Reemplaza [old] (recién agregada) por [replacement] sin crear un paso nuevo de deshacer:
+     * se usa cuando el resaltado se ajusta al texto un instante después de dibujarlo.
+     */
+    fun amendLast(old: Annotation, replacement: List<Annotation>) {
+        val top = undoStack.lastOrNull()
+        if (top == null || top.added.none { it.id == old.id }) return
+        applyRaw(listOf(old), replacement)
+        undoStack[undoStack.size - 1] = Change(top.removed, top.added.filter { it.id != old.id } + replacement)
+        onChanged?.invoke()
+    }
+
+    fun find(id: String): Annotation? = pages.values.firstNotNullOfOrNull { list -> list.firstOrNull { it.id == id } }
+
     fun undo(): Boolean {
         val c = undoStack.removeLastOrNull() ?: return false
         applyRaw(c.added, c.removed)
