@@ -110,6 +110,9 @@ class EditorActivity : AppCompatActivity(), PdfDocumentView.Listener {
             R.id.tool_text to Tool.TEXT,
             R.id.tool_eraser to Tool.ERASER,
             R.id.tool_lasso to Tool.LASSO,
+            R.id.tool_strike to Tool.STRIKE,
+            R.id.tool_shape to Tool.SHAPE,
+            R.id.tool_note to Tool.NOTE,
         )
     }
 
@@ -272,7 +275,7 @@ class EditorActivity : AppCompatActivity(), PdfDocumentView.Listener {
                 }
                 // Las notas de texto de versiones anteriores no tenían cuadro y podían salirse de la hoja.
                 val annotations = loaded.annotations.annotations.map { a ->
-                    if (a is TextAnnotation) fitToPage(a, loaded.sizes.getOrNull(a.page)?.width ?: 612f) else a
+                    if (a is TextAnnotation && !a.sticky) fitToPage(a, loaded.sizes.getOrNull(a.page)?.width ?: 612f) else a
                 }
                 store.load(annotations, dirty = loaded.annotations.fromDraft)
                 pdfView.setDocument(loaded.renderer, loaded.sizes, recents.lastPage(s.uri))
@@ -527,8 +530,7 @@ class EditorActivity : AppCompatActivity(), PdfDocumentView.Listener {
                         val body = when (a) {
                             is TextAnnotation -> a.text
                             else -> {
-                                val area = RectF(a.bounds)
-                                if ((a as InkAnnotation).kind == InkKind.UNDERLINE) area.top -= 14f
+                                val area = (a as InkAnnotation).textArea()
                                 text?.let { t -> runCatching { t.textIn(a.page, area) }.getOrNull() }.orEmpty()
                             }
                         }
@@ -685,7 +687,7 @@ class EditorActivity : AppCompatActivity(), PdfDocumentView.Listener {
             val on = pdfView.tool == tool
             b.backgroundTintList = ColorStateList.valueOf(if (on) selectedBg else Color.TRANSPARENT)
             val inkColor = when (tool) {
-                Tool.PEN, Tool.HIGHLIGHTER, Tool.UNDERLINE -> darkenForIcon(settings.color(tool))
+                Tool.PEN, Tool.HIGHLIGHTER, Tool.UNDERLINE, Tool.STRIKE, Tool.SHAPE, Tool.NOTE -> darkenForIcon(settings.color(tool))
                 else -> null
             }
             b.iconTint = ColorStateList.valueOf(inkColor ?: if (on) selectedTint else normalTint)
@@ -753,7 +755,8 @@ class EditorActivity : AppCompatActivity(), PdfDocumentView.Listener {
 
         colorMeaning.isVisible = tool == Tool.HIGHLIGHTER || tool == Tool.UNDERLINE
         colorMeaning.text = settings.colorLabel(selected).ifBlank { getString(R.string.rename_color) }
-        snapCheck.isVisible = tool == Tool.HIGHLIGHTER || tool == Tool.UNDERLINE
+        snapCheck.isVisible = tool == Tool.HIGHLIGHTER || tool == Tool.UNDERLINE || tool == Tool.STRIKE
+        refreshShapeTypes(tool)
         lassoHint.isVisible = lasso
         selectionDelete.isVisible = lasso && pdfView.selectionCount > 0
         lassoHint.text = if (lasso && pdfView.selectionCount > 0) {
@@ -761,10 +764,11 @@ class EditorActivity : AppCompatActivity(), PdfDocumentView.Listener {
         } else {
             getString(R.string.lasso_hint)
         }
-        widthLabel.isVisible = !lasso
-        widthSlider.isVisible = !lasso
-        findViewById<View>(R.id.options_divider).isVisible = !lasso
-        if (lasso) {
+        val noWidth = lasso || tool == Tool.NOTE
+        widthLabel.isVisible = !noWidth
+        widthSlider.isVisible = !noWidth
+        findViewById<View>(R.id.options_divider).isVisible = !noWidth
+        if (noWidth) {
             straightCheck.isVisible = false
             return
         }
@@ -781,6 +785,40 @@ class EditorActivity : AppCompatActivity(), PdfDocumentView.Listener {
         updateWidthLabel(tool, value)
         straightCheck.isVisible = tool == Tool.HIGHLIGHTER
         widthSlider.thumbTintList = ColorStateList.valueOf(settings.color(tool) or 0xFF000000.toInt())
+    }
+
+    /** Botones para elegir la forma (rectángulo, círculo, línea o flecha) de la herramienta Formas. */
+    private fun refreshShapeTypes(tool: Tool) {
+        val row = findViewById<LinearLayout>(R.id.shape_types)
+        row.isVisible = tool == Tool.SHAPE
+        if (tool != Tool.SHAPE) return
+        row.removeAllViews()
+        val d = resources.displayMetrics.density
+        val selectedBg = MaterialColors.getColor(row, com.google.android.material.R.attr.colorSecondaryContainer)
+        val tint = MaterialColors.getColor(row, com.google.android.material.R.attr.colorOnSurfaceVariant)
+        val shapes = listOf(
+            com.matias.editorpdf.model.ShapeType.RECT to (R.drawable.ic_shape_rect to R.string.shape_rect),
+            com.matias.editorpdf.model.ShapeType.ELLIPSE to (R.drawable.ic_shape_ellipse to R.string.shape_ellipse),
+            com.matias.editorpdf.model.ShapeType.LINE to (R.drawable.ic_shape_line to R.string.shape_line),
+            com.matias.editorpdf.model.ShapeType.ARROW to (R.drawable.ic_shape_arrow to R.string.shape_arrow),
+        )
+        for ((type, res) in shapes) {
+            val b = android.widget.ImageButton(this)
+            b.setImageResource(res.first)
+            b.contentDescription = getString(res.second)
+            b.tooltipText = getString(res.second)
+            b.imageTintList = ColorStateList.valueOf(tint)
+            b.background = GradientDrawable().apply {
+                cornerRadius = 12 * d
+                setColor(if (settings.shapeType == type) selectedBg else Color.TRANSPARENT)
+            }
+            b.setOnClickListener {
+                settings.shapeType = type
+                refreshShapeTypes(tool)
+            }
+            val size = (38 * d).roundToInt()
+            row.addView(b, LinearLayout.LayoutParams(size, size).apply { marginEnd = (2 * d).roundToInt() })
+        }
     }
 
     private fun renameColor(color: Int) {
@@ -953,6 +991,45 @@ class EditorActivity : AppCompatActivity(), PdfDocumentView.Listener {
             }
             if (!snapped.isNullOrEmpty()) store.amendLast(a, snapped)
         }
+    }
+
+    override fun onNoteRequested(page: Int, x: Float, y: Float, existing: TextAnnotation?) {
+        val input = EditText(this).apply {
+            setText(existing?.text.orEmpty())
+            setSelection(text.length)
+            minLines = 3
+            gravity = Gravity.TOP or Gravity.START
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE or
+                InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+            hint = getString(R.string.note_hint)
+        }
+        val builder = MaterialAlertDialogBuilder(this)
+            .setTitle(if (existing == null) R.string.add_note else R.string.sticky_note)
+            .setView(wrap(input))
+            .setPositiveButton(android.R.string.ok) { _, _ ->
+                val text = input.text.toString().trimEnd()
+                when {
+                    existing == null -> if (text.isNotBlank()) {
+                        val note = TextAnnotation(
+                            Annotation.newId(), page, x, y, text, settings.color(Tool.NOTE), 12f, sticky = true,
+                        )
+                        store.commit(AnnotationStore.Change(emptyList(), listOf(note)))
+                    }
+                    text.isBlank() -> store.commit(AnnotationStore.Change(listOf(existing), emptyList()))
+                    text != existing.text -> store.commit(AnnotationStore.Change(listOf(existing), listOf(existing.withText(text))))
+                }
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+        if (existing != null) {
+            builder.setNeutralButton(R.string.delete) { _, _ ->
+                store.commit(AnnotationStore.Change(listOf(existing), emptyList()))
+            }
+        }
+        val dialog = builder.create()
+        // Una nota nueva abre el teclado; una existente se muestra para leerla.
+        if (existing == null) dialog.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE)
+        dialog.show()
+        if (existing == null) input.requestFocus()
     }
 
     override fun onTextRequested(page: Int, x: Float, y: Float, existing: TextAnnotation?, boxWidth: Float) {

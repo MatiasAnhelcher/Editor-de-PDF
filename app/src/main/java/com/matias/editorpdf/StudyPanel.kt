@@ -259,7 +259,7 @@ class StudyPanel(
 
     private fun showHighlights() {
         val all = host.annotations().filter {
-            it is TextAnnotation || (it is InkAnnotation && it.kind != InkKind.PEN)
+            com.matias.editorpdf.view.AnnotationPainter.isStudyItem(it)
         }.sortedWith(compareBy({ it.page }, { it.bounds.top }, { it.bounds.left }))
         updateFilters(all)
         val filter = colorFilter
@@ -269,6 +269,7 @@ class StudyPanel(
             val kind = when {
                 a is TextAnnotation -> activity.getString(R.string.kind_note)
                 (a as InkAnnotation).kind == InkKind.UNDERLINE -> activity.getString(R.string.kind_underline)
+                (a as InkAnnotation).kind == InkKind.STRIKE -> activity.getString(R.string.kind_strike)
                 else -> activity.getString(R.string.kind_highlight)
             }
             val title = when (a) {
@@ -293,8 +294,7 @@ class StudyPanel(
         job?.cancel()
         job = activity.lifecycleScope.launch {
             for (a in missing) {
-                val area = android.graphics.RectF(a.bounds)
-                if ((a as InkAnnotation).kind == InkKind.UNDERLINE) area.top -= 14f
+                val area = (a as InkAnnotation).textArea()
                 val found = withContext(Dispatchers.IO) { runCatching { text.textIn(a.page, area) }.getOrDefault("") }
                 highlightTexts[a.id] = found
                 if (!coroutineContext.isActive || currentTab != Tab.HIGHLIGHTS) return@launch

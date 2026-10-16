@@ -52,6 +52,9 @@ class PdfDocumentView @JvmOverloads constructor(
          * superior izquierda. Si no, (x, y) es el punto tocado.
          */
         fun onTextRequested(page: Int, x: Float, y: Float, existing: TextAnnotation?, boxWidth: Float = 0f)
+
+        /** Pide escribir o leer una nota adhesiva (nueva en (x, y) si [existing] es null). */
+        fun onNoteRequested(page: Int, x: Float, y: Float, existing: TextAnnotation?) {}
         fun onSelectionChanged(count: Int) {}
 
         /** Se llama al terminar un resaltado o subrayado recto, para poder ajustarlo al texto. */
@@ -81,7 +84,7 @@ class PdfDocumentView @JvmOverloads constructor(
     }
 
     private fun selectedText(): TextAnnotation? =
-        selectedTextId?.let { id -> store?.find(id) as? TextAnnotation }
+        selectedTextId?.let { id -> store?.find(id) as? TextAnnotation }?.takeUnless { it.sticky }
 
     var tool: Tool = Tool.PEN
         set(value) {
@@ -220,6 +223,7 @@ class PdfDocumentView @JvmOverloads constructor(
 
     private var strokePage = -1
     private var strokeKind = InkKind.PEN
+    private var strokeShape = com.matias.editorpdf.model.ShapeType.RECT
     private var strokeStraight = false
     private var strokeColor = Color.BLACK
     private var strokeWidth = 1.5f
@@ -577,7 +581,7 @@ class PdfDocumentView @JvmOverloads constructor(
         if (moving != null) painter.draw(canvas, moving, cache = false)
         if ((tool == Tool.TEXT || tool == Tool.HAND) && !reviewMode) {
             // Solo el cuadro elegido (o el que se está moviendo) muestra marco y manijas.
-            val framed = moving ?: selectedText()?.takeIf { it.page == page }
+            val framed = (moving ?: selectedText()?.takeIf { it.page == page })?.takeUnless { it.sticky }
             if (framed != null) drawTextFrame(canvas, framed, s)
         }
         if (boxHere) {
@@ -692,7 +696,7 @@ class PdfDocumentView @JvmOverloads constructor(
         zoomAnimator?.cancel()
         mode = Mode.NONE
         val pen = isPen(e, 0)
-        val fingerMayDraw = !settings.stylusOnly || tool == Tool.TEXT
+        val fingerMayDraw = !settings.stylusOnly || tool == Tool.TEXT || tool == Tool.NOTE
         if (!reviewMode && tool == Tool.HAND && textGrabAt(e.getX(0), e.getY(0)) != null) {
             // Con la herramienta Mover, tocar un cuadro de texto lo agarra (para moverlo o ensancharlo).
             beginToolGesture(e, 0, pen)
@@ -775,7 +779,7 @@ class PdfDocumentView @JvmOverloads constructor(
         val y = e.getY(idx)
         when {
             sideButton || tool == Tool.ERASER -> startErase(x, y)
-            tool == Tool.TEXT || tool == Tool.HAND -> startTextPress(x, y)
+            tool == Tool.TEXT || tool == Tool.HAND || tool == Tool.NOTE -> startTextPress(x, y)
             tool == Tool.LASSO -> startLasso(x, y)
             else -> startStroke(x, y, pressure(e, idx, -1))
         }
@@ -793,12 +797,20 @@ class PdfDocumentView @JvmOverloads constructor(
                 val t = pressedText
                 val hit = screenToPage(downX, downY)
                 when {
+                    // Las notas adhesivas se abren con un solo toque.
+                    t != null && t.sticky -> listener?.onNoteRequested(t.page, t.x, t.y, t)
                     // Como en Acrobat: el primer toque elige el cuadro, el segundo abre el texto.
                     t != null && t.id == selectedTextId -> listener?.onTextRequested(t.page, t.x, t.y, t)
                     t != null -> selectText(t.id)
                     // Tocar afuera suelta el cuadro elegido; recién el siguiente toque crea uno nuevo.
                     selectedTextId != null -> selectText(null)
                     hit != null && tool == Tool.TEXT -> listener?.onTextRequested(hit.page, hit.x, hit.y, null)
+                    hit != null && tool == Tool.NOTE -> listener?.onNoteRequested(
+                        hit.page,
+                        (hit.x - TextAnnotation.NOTE_SIZE / 2f).coerceAtLeast(0f),
+                        (hit.y - TextAnnotation.NOTE_SIZE / 2f).coerceAtLeast(0f),
+                        null,
+                    )
                 }
             }
             Mode.LASSO -> finishLasso()
@@ -807,7 +819,7 @@ class PdfDocumentView @JvmOverloads constructor(
                 val from = pressedText
                 val to = movingText
                 if (from != null && to != null) store?.commit(AnnotationStore.Change(listOf(from), listOf(to)))
-                if (to != null) selectedTextId = to.id
+                if (to != null && !to.sticky) selectedTextId = to.id
             }
             Mode.DRAW_TEXT_BOX -> {
                 selectedTextId = null
@@ -894,7 +906,7 @@ class PdfDocumentView @JvmOverloads constructor(
 
     private fun handleNav(e: MotionEvent) {
         scaleDetector.onTouchEvent(e)
-        if (navFromDown && tool != Tool.TEXT && !reviewMode) doubleTap.onTouchEvent(e)
+        if (navFromDown && tool != Tool.TEXT && tool != Tool.NOTE && !reviewMode) doubleTap.onTouchEvent(e)
         navMaxPointers = max(navMaxPointers, e.pointerCount)
         if (!navMoved && hypot(e.getX(0) - navDownX, e.getY(0) - navDownY) > touchSlop) navMoved = true
         velocityTracker?.addMovement(e)
@@ -983,16 +995,22 @@ class PdfDocumentView @JvmOverloads constructor(
         strokeKind = when (tool) {
             Tool.HIGHLIGHTER -> InkKind.HIGHLIGHTER
             Tool.UNDERLINE -> InkKind.UNDERLINE
+            Tool.STRIKE -> InkKind.STRIKE
+            Tool.SHAPE -> InkKind.SHAPE
             else -> InkKind.PEN
         }
         val styleTool = when (strokeKind) {
             InkKind.HIGHLIGHTER -> Tool.HIGHLIGHTER
             InkKind.UNDERLINE -> Tool.UNDERLINE
+            InkKind.STRIKE -> Tool.STRIKE
+            InkKind.SHAPE -> Tool.SHAPE
             InkKind.PEN -> Tool.PEN
         }
         strokeColor = settings.color(styleTool)
         strokeWidth = settings.width(styleTool)
-        strokeStraight = strokeKind == InkKind.UNDERLINE ||
+        strokeShape = settings.shapeType
+        // Las formas se arrastran de una esquina a la otra: como una línea recta de dos puntos.
+        strokeStraight = strokeKind == InkKind.UNDERLINE || strokeKind == InkKind.STRIKE || strokeKind == InkKind.SHAPE ||
             (strokeKind == InkKind.HIGHLIGHTER && settings.straightHighlighter)
         strokeCount = 0
         appendPoint(hit.x, hit.y, p)
@@ -1039,6 +1057,11 @@ class PdfDocumentView @JvmOverloads constructor(
     private fun currentStroke(): InkAnnotation? {
         if (strokeCount == 0) return null
         val pts = strokePts.copyOf(strokeCount * 3)
+        if (strokeKind == InkKind.SHAPE) {
+            if (strokeCount < 2) return null
+            val shape = strokeShape.points(pts[0], pts[1], pts[3], pts[4], strokeWidth)
+            return InkAnnotation("current", strokePage, strokeKind, strokeColor, strokeWidth, shape, false)
+        }
         if (strokeStraight && strokeCount >= 2) {
             val dx = pts[3] - pts[0]
             val dy = pts[4] - pts[1]
@@ -1052,6 +1075,10 @@ class PdfDocumentView @JvmOverloads constructor(
         strokeCount = 0
         mode = Mode.NONE
         if (current == null) return
+        if (current.kind == InkKind.SHAPE) {
+            val b = current.bounds
+            if (b.width() < 4f + current.width && b.height() < 4f + current.width) return
+        }
         if (current.straight) {
             if (current.pointCount < 2) return
             val len = hypot(current.x(1) - current.x(0), current.y(1) - current.y(0))
@@ -1135,7 +1162,7 @@ class PdfDocumentView @JvmOverloads constructor(
         if (mode == Mode.TEXT_PRESS && hypot(x - downX, y - downY) > touchSlop) {
             when {
                 pressedText != null -> mode = Mode.MOVE_TEXT
-                activeIsPen && screenToPage(downX, downY) != null -> {
+                activeIsPen && tool == Tool.TEXT && screenToPage(downX, downY) != null -> {
                     // Arrastrar el lápiz sobre un lugar vacío dibuja el cuadro, como en Acrobat.
                     textBoxPage = screenToPage(downX, downY)!!.page
                     mode = Mode.DRAW_TEXT_BOX

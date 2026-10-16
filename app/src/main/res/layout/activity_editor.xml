@@ -86,6 +86,14 @@
                             android:textColor="?attr/colorOnSurfaceVariant" />
                     </LinearLayout>
 
+                    <LinearLayout
+                        android:id="@+id/shape_types"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="10dp"
+                        android:orientation="horizontal"
+                        android:visibility="gone" />
+
                     <View
                         android:id="@+id/options_divider"
                         android:layout_width="1dp"
@@ -188,11 +196,32 @@
                     app:icon="@drawable/ic_tool_underline" />
 
                 <com.google.android.material.button.MaterialButton
+                    android:id="@+id/tool_strike"
+                    style="@style/Widget.EditorPDF.ToolButton"
+                    android:contentDescription="@string/tool_strike"
+                    android:tooltipText="@string/tool_strike"
+                    app:icon="@drawable/ic_tool_strike" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/tool_shape"
+                    style="@style/Widget.EditorPDF.ToolButton"
+                    android:contentDescription="@string/tool_shape"
+                    android:tooltipText="@string/tool_shape"
+                    app:icon="@drawable/ic_tool_shape" />
+
+                <com.google.android.material.button.MaterialButton
                     android:id="@+id/tool_text"
                     style="@style/Widget.EditorPDF.ToolButton"
                     android:contentDescription="@string/tool_text"
                     android:tooltipText="@string/tool_text"
                     app:icon="@drawable/ic_tool_text" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/tool_note"
+                    style="@style/Widget.EditorPDF.ToolButton"
+                    android:contentDescription="@string/tool_note"
+                    android:tooltipText="@string/tool_note"
+                    app:icon="@drawable/ic_tool_note" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/tool_lasso"

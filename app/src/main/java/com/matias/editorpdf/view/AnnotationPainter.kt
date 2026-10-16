@@ -33,12 +33,60 @@ class AnnotationPainter {
     fun draw(canvas: Canvas, a: Annotation, cache: Boolean = true) {
         when (a) {
             is InkAnnotation -> drawInk(canvas, a, cache)
-            is TextAnnotation -> {
+            is TextAnnotation -> if (a.sticky) drawNote(canvas, a) else {
                 textPaint.color = a.color or 0xFF000000.toInt()
                 textPaint.textSize = a.size
                 a.lines.forEachIndexed { i, line -> canvas.drawText(line, a.x, a.baseline(i), textPaint) }
             }
         }
+    }
+
+    private val notePaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val notePath = Path()
+
+    /** Nota adhesiva: un papelito de color con la esquina doblada y renglones, como en Acrobat. */
+    private fun drawNote(canvas: Canvas, a: TextAnnotation) {
+        val b = a.bounds
+        val s = b.width()
+        val fold = s * 0.3f
+        val r = s * 0.14f
+        // Sombra suave.
+        notePaint.style = Paint.Style.FILL
+        notePaint.color = 0x33000000
+        canvas.drawRoundRect(b.left + s * 0.04f, b.top + s * 0.08f, b.right + s * 0.04f, b.bottom + s * 0.08f, r, r, notePaint)
+        // Papel con la esquina superior derecha cortada.
+        notePath.reset()
+        notePath.moveTo(b.left + r, b.top)
+        notePath.lineTo(b.right - fold, b.top)
+        notePath.lineTo(b.right, b.top + fold)
+        notePath.lineTo(b.right, b.bottom - r)
+        notePath.quadTo(b.right, b.bottom, b.right - r, b.bottom)
+        notePath.lineTo(b.left + r, b.bottom)
+        notePath.quadTo(b.left, b.bottom, b.left, b.bottom - r)
+        notePath.lineTo(b.left, b.top + r)
+        notePath.quadTo(b.left, b.top, b.left + r, b.top)
+        notePath.close()
+        notePaint.color = a.color or 0xFF000000.toInt()
+        canvas.drawPath(notePath, notePaint)
+        // Pliegue.
+        notePath.reset()
+        notePath.moveTo(b.right - fold, b.top)
+        notePath.lineTo(b.right - fold, b.top + fold)
+        notePath.lineTo(b.right, b.top + fold)
+        notePath.close()
+        notePaint.color = 0x55000000
+        canvas.drawPath(notePath, notePaint)
+        // Renglones.
+        notePaint.color = 0xCCFFFFFF.toInt()
+        notePaint.style = Paint.Style.STROKE
+        notePaint.strokeWidth = s * 0.08f
+        notePaint.strokeCap = Paint.Cap.ROUND
+        for (k in 0..2) {
+            val y = b.top + s * (0.42f + k * 0.18f)
+            val right = if (k == 2) b.left + s * 0.55f else b.right - s * 0.22f
+            canvas.drawLine(b.left + s * 0.22f, y, right, y, notePaint)
+        }
+        notePaint.style = Paint.Style.FILL
     }
 
     /** Tapa la anotación (modo repaso / tarjetas). Devuelve false si esa anotación no se tapa. */
@@ -109,12 +157,15 @@ class AnnotationPainter {
         /** Zona que se tapa en el modo repaso (null = no se tapa, como el lápiz). */
         fun coverRect(a: Annotation): RectF? = when {
             a is TextAnnotation -> RectF(a.bounds).apply { inset(-2f, -2f) }
+            a is TextAnnotation && a.sticky -> null
             a is InkAnnotation && a.kind == InkKind.UNDERLINE -> RectF(a.bounds).apply { top -= 13f }
+            a is InkAnnotation && a.kind == InkKind.STRIKE -> RectF(a.bounds).apply { inset(-1f, -6f) }
             a is InkAnnotation && a.kind == InkKind.HIGHLIGHTER -> RectF(a.bounds)
             else -> null
         }
 
         /** Las anotaciones que sirven como tarjeta de repaso (resaltados, subrayados y notas). */
-        fun isStudyItem(a: Annotation) = a is TextAnnotation || (a is InkAnnotation && a.kind != InkKind.PEN)
+        fun isStudyItem(a: Annotation) = a is TextAnnotation ||
+            (a is InkAnnotation && (a.kind == InkKind.HIGHLIGHTER || a.kind == InkKind.UNDERLINE || a.kind == InkKind.STRIKE))
     }
 }

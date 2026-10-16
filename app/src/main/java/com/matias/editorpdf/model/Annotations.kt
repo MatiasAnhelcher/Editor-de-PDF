@@ -11,9 +11,56 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 
-enum class Tool { HAND, PEN, HIGHLIGHTER, UNDERLINE, TEXT, ERASER, LASSO }
+enum class Tool { HAND, PEN, HIGHLIGHTER, UNDERLINE, TEXT, ERASER, LASSO, STRIKE, SHAPE, NOTE }
 
-enum class InkKind { PEN, HIGHLIGHTER, UNDERLINE }
+enum class InkKind { PEN, HIGHLIGHTER, UNDERLINE, STRIKE, SHAPE }
+
+/** Formas que dibuja la herramienta Formas. Se guardan como trazos (InkAnnotation de tipo SHAPE). */
+enum class ShapeType {
+    RECT, ELLIPSE, LINE, ARROW;
+
+    /** Puntos (x, y, presión) del contorno de la forma que va de (x0, y0) a (x1, y1). */
+    fun points(x0: Float, y0: Float, x1: Float, y1: Float, width: Float): FloatArray {
+        val out = ArrayList<Float>()
+        fun add(x: Float, y: Float) {
+            out.add(x); out.add(y); out.add(0.5f)
+        }
+        when (this) {
+            RECT -> {
+                add(x0, y0); add(x1, y0); add(x1, y1); add(x0, y1); add(x0, y0)
+            }
+            ELLIPSE -> {
+                val cx = (x0 + x1) / 2f
+                val cy = (y0 + y1) / 2f
+                val rx = kotlin.math.abs(x1 - x0) / 2f
+                val ry = kotlin.math.abs(y1 - y0) / 2f
+                val n = 72
+                for (i in 0..n) {
+                    val t = (2.0 * Math.PI * i / n)
+                    add(cx + rx * kotlin.math.cos(t).toFloat(), cy + ry * kotlin.math.sin(t).toFloat())
+                }
+            }
+            LINE -> {
+                add(x0, y0); add(x1, y1)
+            }
+            ARROW -> {
+                // Cuerpo hasta la punta y, desde la punta, las dos alas (un solo trazo continuo).
+                val len = hypot(x1 - x0, y1 - y0).coerceAtLeast(0.01f)
+                val ux = (x1 - x0) / len
+                val uy = (y1 - y0) / len
+                val head = min(max(8f, width * 4.5f), len * 0.45f)
+                val wing = head * 0.6f
+                val bx = x1 - ux * head
+                val by = y1 - uy * head
+                add(x0, y0); add(x1, y1)
+                add(bx - uy * wing, by + ux * wing)
+                add(x1, y1)
+                add(bx + uy * wing, by - ux * wing)
+            }
+        }
+        return out.toFloatArray()
+    }
+}
 
 /**
  * Una anotación sobre una página. Las coordenadas están en puntos PDF, relativas a la página
@@ -83,6 +130,15 @@ class InkAnnotation(
         if (kind == InkKind.PEN) width * (0.35f + 0.9f * pressure.coerceIn(0f, 1f)) else width
 
     val maxWidth: Float get() = if (kind == InkKind.PEN) width * 1.25f else width
+
+    /** Zona donde está el texto marcado (el subrayado queda debajo y el tachado en el medio del renglón). */
+    fun textArea(): RectF = RectF(bounds).apply {
+        when (kind) {
+            InkKind.UNDERLINE -> top -= 14f
+            InkKind.STRIKE -> inset(0f, -7f)
+            else -> Unit
+        }
+    }
 
     /** Índices de los puntos que se dibujan (un trazo recto solo usa el primero y el último). */
     fun drawnIndices(): IntArray = when {
@@ -202,6 +258,8 @@ class TextAnnotation(
     override val color: Int,
     val size: Float,
     val boxWidth: Float = 0f,
+    /** Nota adhesiva: se ve como un iconito y el texto se abre al tocarla (como los comentarios de Acrobat). */
+    val sticky: Boolean = false,
 ) : Annotation() {
 
     /** Renglones ya cortados para que entren en el ancho del cuadro. */
@@ -211,6 +269,7 @@ class TextAnnotation(
 
     override val bounds: RectF by lazy {
         val ls = lines
+        if (sticky) return@lazy RectF(x, y, x + NOTE_SIZE, y + NOTE_SIZE)
         val w = if (boxWidth > 0f) boxWidth else synchronized(measurePaint) {
             measurePaint.textSize = size
             ls.maxOf { measurePaint.measureText(it) }
@@ -223,11 +282,11 @@ class TextAnnotation(
         return x >= b.left - radius && x <= b.right + radius && y >= b.top - radius && y <= b.bottom + radius
     }
 
-    fun moved(dx: Float, dy: Float) = TextAnnotation(id, page, x + dx, y + dy, text, color, size, boxWidth)
-    fun withText(newText: String) = TextAnnotation(id, page, x, y, newText, color, size, boxWidth)
-    fun withColor(c: Int) = TextAnnotation(id, page, x, y, text, c, size, boxWidth)
-    fun withBoxWidth(w: Float) = TextAnnotation(id, page, x, y, text, color, size, w)
-    override fun withPage(page: Int) = TextAnnotation(id, page, x, y, text, color, size, boxWidth)
+    fun moved(dx: Float, dy: Float) = TextAnnotation(id, page, x + dx, y + dy, text, color, size, boxWidth, sticky)
+    fun withText(newText: String) = TextAnnotation(id, page, x, y, newText, color, size, boxWidth, sticky)
+    fun withColor(c: Int) = TextAnnotation(id, page, x, y, text, c, size, boxWidth, sticky)
+    fun withBoxWidth(w: Float) = TextAnnotation(id, page, x, y, text, color, size, w, sticky)
+    override fun withPage(page: Int) = TextAnnotation(id, page, x, y, text, color, size, boxWidth, sticky)
 
     override fun toJson(): JSONObject = JSONObject().apply {
         put("type", "text")
@@ -239,10 +298,14 @@ class TextAnnotation(
         put("color", color)
         put("size", round2(size))
         if (boxWidth > 0f) put("bw", round2(boxWidth))
+        if (sticky) put("sticky", true)
     }
 
     companion object {
         const val LINE_SPACING = 1.25f
+
+        /** Lado del iconito de una nota adhesiva, en puntos. */
+        const val NOTE_SIZE = 20f
         const val BASELINE = 0.95f
         private val measurePaint = TextPaint(Paint.ANTI_ALIAS_FLAG)
 
@@ -255,6 +318,7 @@ class TextAnnotation(
             color = o.optInt("color", 0xFF000000.toInt()),
             size = o.optDouble("size", 12.0).toFloat(),
             boxWidth = o.optDouble("bw", 0.0).toFloat(),
+            sticky = o.optBoolean("sticky", false),
         )
 
         /** Corta el texto en renglones de hasta [width] puntos, respetando palabras y saltos de línea. */
