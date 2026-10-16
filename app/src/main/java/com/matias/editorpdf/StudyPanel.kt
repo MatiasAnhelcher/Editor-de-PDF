@@ -143,6 +143,12 @@ class StudyPanel(
         host.clearSearchMatch()
     }
 
+    /** Las páginas cambiaron (se giró, borró o agregó una): las miniaturas viejas ya no sirven. */
+    fun pagesChanged() {
+        thumbs.evictAll()
+        refresh()
+    }
+
     /** Vuelve a cargar la pestaña visible (por ejemplo, después de agregar un resaltado o un marcador). */
     fun refresh() {
         if (!isOpen) return

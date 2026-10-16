@@ -270,6 +270,9 @@ class PdfDocumentView @JvmOverloads constructor(
     // Documento
     // ======================================================================================
 
+    /** Si está puesto, el próximo toque en una página elige un lugar (por ejemplo, para la firma). */
+    var onPlace: ((page: Int, x: Float, y: Float) -> Unit)? = null
+
     fun setDocument(renderer: PageRenderer, pageSizes: List<SizeF>, initialPage: Int) {
         this.renderer = renderer
         sizes = pageSizes
@@ -695,6 +698,17 @@ class PdfDocumentView @JvmOverloads constructor(
         scroller.forceFinished(true)
         zoomAnimator?.cancel()
         mode = Mode.NONE
+        val place = onPlace
+        if (place != null) {
+            // Se está eligiendo dónde poner algo (la firma): este toque es para eso y nada más.
+            val hit = screenToPage(e.getX(0), e.getY(0))
+            mode = Mode.IGNORE
+            if (hit != null) {
+                onPlace = null
+                place(hit.page, hit.x, hit.y)
+            }
+            return
+        }
         val pen = isPen(e, 0)
         val fingerMayDraw = !settings.stylusOnly || tool == Tool.TEXT || tool == Tool.NOTE
         if (!reviewMode && tool == Tool.HAND && textGrabAt(e.getX(0), e.getY(0)) != null) {
