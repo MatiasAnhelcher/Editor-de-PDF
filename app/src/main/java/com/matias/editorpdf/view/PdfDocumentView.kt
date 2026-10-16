@@ -190,6 +190,7 @@ class PdfDocumentView @JvmOverloads constructor(
     private var pressedText: TextAnnotation? = null
     private var movingText: TextAnnotation? = null
     private var resizingText = false
+    private var resizeEdge = 1
     private var textBoxPage = -1
     private val textBox = RectF()
 
@@ -526,7 +527,7 @@ class PdfDocumentView @JvmOverloads constructor(
             painter.draw(canvas, a, cache = true)
         }
         if (searchHere) searchRects.forEach { canvas.drawRect(it, searchPaint) }
-        if (tool == Tool.TEXT && !reviewMode) {
+        if ((tool == Tool.TEXT || tool == Tool.HAND) && !reviewMode) {
             // Con la herramienta Texto, cada cuadro se ve como cuadro y se puede ensanchar desde el borde.
             for (a in list) if (a is TextAnnotation && a.id != moving?.id) drawTextFrame(canvas, a, s, active = false)
         }
@@ -560,15 +561,50 @@ class PdfDocumentView @JvmOverloads constructor(
         paint.strokeWidth = (if (active) 1.5f else 1f) * density / s
         paint.pathEffect = if (active) DashPathEffect(floatArrayOf(6f * density / s, 4f * density / s), 0f) else null
         canvas.drawRect(b, paint)
-        // Manija para cambiar el ancho, en el medio del borde derecho.
-        val r = 5f * density / s
-        handlePaint.style = Paint.Style.FILL
-        handlePaint.color = Color.WHITE
-        canvas.drawCircle(b.right, b.centerY(), r, handlePaint)
-        handlePaint.style = Paint.Style.STROKE
-        handlePaint.strokeWidth = 1.5f * density / s
-        handlePaint.color = 0xFF1E88E5.toInt()
-        canvas.drawCircle(b.right, b.centerY(), r, handlePaint)
+        // Manijas para cambiar el ancho, en el medio de cada borde lateral.
+        val r = 6f * density / s
+        for (hx in floatArrayOf(b.left, b.right)) {
+            handlePaint.style = Paint.Style.FILL
+            handlePaint.color = Color.WHITE
+            canvas.drawCircle(hx, b.centerY(), r, handlePaint)
+            handlePaint.style = Paint.Style.STROKE
+            handlePaint.strokeWidth = 2f * density / s
+            handlePaint.color = 0xFF1E88E5.toInt()
+            canvas.drawCircle(hx, b.centerY(), r, handlePaint)
+        }
+    }
+
+    /** Como [screenToPage] pero sin exigir caer dentro de la hoja (para manijas que quedan en el borde). */
+    private fun screenToPageLoose(sx: Float, sy: Float): Hit? {
+        screenToPage(sx, sy)?.let { return it }
+        if (sizes.isEmpty()) return null
+        val s = scale
+        val slack = 24f * density
+        for (i in max(0, visFirst - 1)..min(sizes.size - 1, visLast + 1)) {
+            val r = pageScreenRect(i, tmpRect)
+            if (sx >= r.left - slack && sx <= r.right + slack && sy >= r.top - slack && sy <= r.bottom + slack) {
+                return Hit(i, (sx - r.left) / s, (sy - r.top) / s)
+            }
+        }
+        return null
+    }
+
+    private class TextGrab(val text: TextAnnotation, val edge: Int)
+
+    /** Qué cuadro de texto hay bajo el dedo: edge -1/1 = manija izquierda/derecha, 0 = el cuadro. */
+    private fun textGrabAt(x: Float, y: Float): TextGrab? {
+        val h = screenToPageLoose(x, y) ?: return null
+        val texts = store?.forPage(h.page)?.filterIsInstance<TextAnnotation>().orEmpty()
+        if (texts.isEmpty()) return null
+        val grab = 18f * density / scale
+        for (t in texts.asReversed()) {
+            val b = textFrame(t)
+            if (h.y < b.top - grab || h.y > b.bottom + grab) continue
+            if (abs(h.x - b.right) <= grab) return TextGrab(t, 1)
+            if (abs(h.x - b.left) <= grab) return TextGrab(t, -1)
+        }
+        val pad = 8f * density / scale
+        return texts.lastOrNull { it.hitTest(h.x, h.y, pad) }?.let { TextGrab(it, 0) }
     }
 
     private fun onReviewTap(x: Float, y: Float) {
@@ -609,7 +645,10 @@ class PdfDocumentView @JvmOverloads constructor(
         mode = Mode.NONE
         val pen = isPen(e, 0)
         val fingerMayDraw = !settings.stylusOnly || tool == Tool.TEXT
-        if (reviewMode || tool == Tool.HAND || (!pen && !fingerMayDraw)) {
+        if (!reviewMode && tool == Tool.HAND && textGrabAt(e.getX(0), e.getY(0)) != null) {
+            // Con la herramienta Mover, tocar un cuadro de texto lo agarra (para moverlo o ensancharlo).
+            beginToolGesture(e, 0, pen)
+        } else if (reviewMode || tool == Tool.HAND || (!pen && !fingerMayDraw)) {
             startNav(e, fromDown = true)
         } else {
             beginToolGesture(e, 0, pen)
@@ -684,7 +723,7 @@ class PdfDocumentView @JvmOverloads constructor(
         val y = e.getY(idx)
         when {
             sideButton || tool == Tool.ERASER -> startErase(x, y)
-            tool == Tool.TEXT -> startTextPress(x, y)
+            tool == Tool.TEXT || tool == Tool.HAND -> startTextPress(x, y)
             tool == Tool.LASSO -> startLasso(x, y)
             else -> startStroke(x, y, pressure(e, idx, -1))
         }
@@ -699,8 +738,12 @@ class PdfDocumentView @JvmOverloads constructor(
             }
             Mode.ERASE -> finishErase()
             Mode.TEXT_PRESS -> {
+                val t = pressedText
                 val hit = screenToPage(downX, downY)
-                if (hit != null) listener?.onTextRequested(hit.page, hit.x, hit.y, pressedText)
+                when {
+                    t != null -> listener?.onTextRequested(t.page, t.x, t.y, t)
+                    hit != null && tool == Tool.TEXT -> listener?.onTextRequested(hit.page, hit.x, hit.y, null)
+                }
             }
             Mode.LASSO -> finishLasso()
             Mode.MOVE_SELECTION -> finishMoveSelection()
@@ -1019,26 +1062,11 @@ class PdfDocumentView @JvmOverloads constructor(
         downX = x
         downY = y
         mode = Mode.TEXT_PRESS
-        resizingText = false
-        val hit = screenToPage(x, y)
-        val texts = hit?.let { h -> store?.forPage(h.page)?.filterIsInstance<TextAnnotation>() }.orEmpty()
-        // Primero la manija del borde derecho (cambiar ancho), después el cuadro entero (mover/editar).
-        val grab = 14f * density / scale
-        val handle = hit?.let { h ->
-            texts.lastOrNull { t ->
-                val b = textFrame(t)
-                abs(h.x - b.right) <= grab && h.y >= b.top - grab && h.y <= b.bottom + grab
-            }
-        }
-        if (handle != null) {
-            pressedText = handle
-            resizingText = true
-            return
-        }
-        pressedText = hit?.let { h ->
-            val pad = 6f * density / scale
-            texts.lastOrNull { it.hitTest(h.x, h.y, pad) }
-        }
+        // Primero las manijas de los costados (cambiar ancho), después el cuadro entero (mover/editar).
+        val g = textGrabAt(x, y)
+        pressedText = g?.text
+        resizingText = g != null && g.edge != 0
+        resizeEdge = g?.edge ?: 1
     }
 
     private fun moveText(e: MotionEvent) {
@@ -1077,8 +1105,16 @@ class PdfDocumentView @JvmOverloads constructor(
             val t = pressedText ?: return
             val sz = sizes[t.page]
             val start = if (t.boxWidth > 0f) t.boxWidth else t.bounds.width()
-            val w = (start + (x - downX) / scale).coerceIn(max(MIN_BOX_WIDTH, t.size * 2f), max(MIN_BOX_WIDTH, sz.width - t.x))
-            movingText = t.withBoxWidth(w)
+            val minW = max(MIN_BOX_WIDTH, t.size * 2f)
+            val d = (x - downX) / scale
+            movingText = if (resizeEdge > 0) {
+                t.withBoxWidth((start + d).coerceIn(minW, max(minW, sz.width - t.x)))
+            } else {
+                // Manija izquierda: el borde derecho queda fijo y se corre el izquierdo.
+                val right = t.x + start
+                val left = (t.x + d).coerceIn(0f, right - minW)
+                t.moved(left - t.x, 0f).withBoxWidth(right - left)
+            }
             invalidate()
             return
         }
@@ -1086,7 +1122,8 @@ class PdfDocumentView @JvmOverloads constructor(
             val t = pressedText ?: return
             val s = scale
             val sz = sizes[t.page]
-            val dx = ((x - downX) / s).coerceIn(-t.x, sz.width - t.x - 4f)
+            val w = t.bounds.width().coerceAtMost(sz.width)
+            val dx = ((x - downX) / s).coerceIn(-t.x, max(-t.x, sz.width - t.x - w))
             val dy = ((y - downY) / s).coerceIn(-t.y, sz.height - t.y - 4f)
             movingText = t.moved(dx, dy)
             invalidate()
