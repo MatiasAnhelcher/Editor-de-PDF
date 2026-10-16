@@ -94,6 +94,7 @@ class MainActivity : AppCompatActivity() {
                 when (it.itemId) {
                     R.id.action_updates -> checkForUpdates(manual = true)
                     R.id.action_reminder -> chooseReminder()
+                    R.id.action_icon -> chooseIcon()
                 }
                 true
             }
@@ -294,6 +295,59 @@ class MainActivity : AppCompatActivity() {
             pendingReminder = null
             if (granted) saveReminder(at) else Snackbar.make(list, R.string.reminder_need_permission, Snackbar.LENGTH_LONG).show()
         }
+
+    /** Elegir el ícono con el que aparece la app en la pantalla de inicio. */
+    private fun chooseIcon() {
+        val current = AppIcon.current(this)
+        val dp = resources.displayMetrics.density
+        val accent = com.google.android.material.color.MaterialColors.getColor(
+            findViewById(R.id.toolbar), com.google.android.material.R.attr.colorPrimary,
+        )
+        var dialog: androidx.appcompat.app.AlertDialog? = null
+        val row = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER
+            setPadding((16 * dp).toInt(), (20 * dp).toInt(), (16 * dp).toInt(), (4 * dp).toInt())
+        }
+        for (icon in AppIcon.entries) {
+            val cell = android.widget.LinearLayout(this).apply {
+                orientation = android.widget.LinearLayout.VERTICAL
+                gravity = android.view.Gravity.CENTER_HORIZONTAL
+                setPadding((8 * dp).toInt(), (8 * dp).toInt(), (8 * dp).toInt(), (8 * dp).toInt())
+                background = android.graphics.drawable.GradientDrawable().apply {
+                    cornerRadius = 18 * dp
+                    if (icon == current) setStroke((2.5f * dp).toInt(), accent)
+                }
+                isClickable = true
+                isFocusable = true
+                setOnClickListener {
+                    it.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                    dialog?.dismiss()
+                    if (icon != current) {
+                        AppIcon.set(this@MainActivity, icon)
+                        Snackbar.make(list, R.string.icon_changed, Snackbar.LENGTH_LONG).show()
+                    }
+                }
+            }
+            cell.addView(ImageView(this).apply {
+                setImageResource(icon.preview)
+                layoutParams = android.widget.LinearLayout.LayoutParams((64 * dp).toInt(), (64 * dp).toInt())
+            })
+            cell.addView(TextView(this).apply {
+                setText(icon.label)
+                setPadding(0, (6 * dp).toInt(), 0, 0)
+            })
+            row.addView(cell, android.widget.LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply {
+                setMargins((4 * dp).toInt(), 0, (4 * dp).toInt(), 0)
+            })
+        }
+        dialog = MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.icon_menu)
+            .setMessage(R.string.icon_hint)
+            .setView(row)
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
 
     private fun chooseReminder() {
         val hours = listOf(8, 12, 15, 18, 20, 22)

@@ -157,6 +157,13 @@
     <string name="reminder_title_streak">Tu racha de %1$d días te espera</string>
     <string name="reminder_text">Hoy todavía no estudiaste. Con %1$d minutos cumples la meta del día.</string>
     <string name="reminder_text_partial">Te faltan %1$d minutos para la meta de hoy.</string>
+    <string name="icon_menu">Ícono de la app</string>
+    <string name="icon_hint">Si tenías la app en la pantalla de inicio, puede que tengas que volver a ponerla.</string>
+    <string name="icon_changed">Listo, el ícono cambia en unos segundos</string>
+    <string name="icon_indigo">Índigo</string>
+    <string name="icon_azul">Azul</string>
+    <string name="icon_verde">Verde</string>
+    <string name="icon_noche">Noche</string>
     <string name="reminder_menu">Recordatorio diario</string>
     <string name="reminder_off">Desactivado</string>
     <string name="reminder_at">Recordatorio a las %1$s</string>

@@ -4,17 +4,55 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path android:fillColor="#40000000" android:pathData="M38,31h25l11,11v39a2,2 0 0 1 -2,2h-34a2,2 0 0 1 -2,-2v-48a2,2 0 0 1 2,-2z" />
-    <path android:fillColor="#FFFDFBF6" android:pathData="M37,28h25l11,11v39a2,2 0 0 1 -2,2h-34a2,2 0 0 1 -2,-2v-48a2,2 0 0 1 2,-2z" />
-    <path android:fillColor="#FFE9DFD3" android:pathData="M62,28l11,11h-9a2,2 0 0 1 -2,-2z" />
-    <path android:fillColor="#00000000" android:strokeColor="#FFC4322A" android:strokeWidth="2.6" android:strokeLineCap="round" android:strokeLineJoin="round"
-                android:pathData="M42,52V43H46a2.6,2.6 0 0 1 0,5.2H42 M50.5,52V43h2.4a4.5,4.5 0 0 1 0,9z M60.5,52V43h5 M60.5,47.4h4" />
-    <path android:fillColor="#FFC9CDD6" android:pathData="M41,57.4h26v1.6h-26z M41,68.4h18v1.6h-18z" />
-    <path android:fillColor="#FFF0C25A" android:pathData="M40,60.4h24v5.6h-24z" />
-    <path android:fillColor="#FF3A4766" android:pathData="M41,62.4h22v1.6h-22z" />
-    <group android:pivotX="68" android:pivotY="70" android:rotation="38">
-                <path android:fillColor="#FF1F2A44" android:pathData="M65.5,57h5v17h-5z" />
-                <path android:fillColor="#FFD9A441" android:pathData="M65.5,74h5l-2.5,5z" />
-                <path android:fillColor="#FF3C4C78" android:pathData="M65.5,57h5v2.4h-5z" />
-            </group>
+    <!-- Escala 0.8 al centro: el lápiz y la pastilla quedan dentro de la zona visible del ícono. -->
+    <group
+        android:pivotX="54"
+        android:pivotY="54"
+        android:scaleX="0.8"
+        android:scaleY="0.8"
+        android:translateY="1.5">
+        <!-- Hoja con relleno translúcido y trazo blanco -->
+        <path
+            android:fillColor="#20FFFFFF"
+            android:pathData="M29,56 V26 C29,22.13 32.13,19 36,19 H60 L77,36 V79 C77,82.87 73.87,86 70,86 H52"
+            android:strokeWidth="5"
+            android:strokeColor="#FFFFFF"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round" />
+        <!-- Pliegue superior -->
+        <path
+            android:pathData="M59,19 V33 C59,35.21 60.79,37 63,37 H77"
+            android:strokeWidth="4.5"
+            android:strokeColor="#FFFFFF"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round" />
+        <!-- Renglones: el segundo, resaltado -->
+        <path
+            android:pathData="M39,35 L51,35"
+            android:strokeWidth="4"
+            android:strokeColor="#E0E7FF"
+            android:strokeLineCap="round" />
+        <path
+            android:pathData="M39,46 L64,46"
+            android:strokeWidth="4"
+            android:strokeColor="#00F5D4"
+            android:strokeLineCap="round" />
+        <!-- Lápiz -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M79,43 L86,50 L70,66 L61,68 L63,59 Z" />
+        <path
+            android:fillColor="#00F5D4"
+            android:pathData="M82,40 L89,47 L86,50 L79,43 Z" />
+        <!-- Pastilla "PDF" -->
+        <path
+            android:fillColor="#FF2E63"
+            android:pathData="M26,58 H60 C63.87,58 67,61.13 67,65 V75 C67,78.87 63.87,82 60,82 H26 C22.13,82 19,78.87 19,75 V65 C19,61.13 22.13,58 26,58 Z" />
+        <path
+            android:pathData="M27,75 V65 H31.8 C33.7,65 35,66.1 35,67.9 C35,69.7 33.7,70.8 31.8,70.8 H27 M39,65 H42.6 C45.5,65 47.6,67.1 47.6,70 C47.6,72.9 45.5,75 42.6,75 H39 Z M52,75 V65 H58.5 M52,69.9 H57"
+            android:strokeWidth="2.9"
+            android:strokeColor="#FFFFFF"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round" />
+    </group>
 </vector>
