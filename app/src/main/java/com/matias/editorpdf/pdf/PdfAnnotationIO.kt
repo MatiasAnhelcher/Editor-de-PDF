@@ -190,7 +190,7 @@ object PdfAnnotationIO {
         dict.setItem(COSName.RECT, rect.cosArray)
         dict.setInt(COSName.getPDFName("F"), 4) // Imprimible
         dict.setString(COSName.getPDFName("NM"), NM_PREFIX + a.id)
-        dict.setString(COSName.getPDFName("T"), "Editor de PDF")
+        dict.setString(COSName.getPDFName("T"), "Cosmos Editor de PDF")
         dict.setItem(COSName.getPDFName("P"), page.cosObject)
         dict.setString(KEY_DATA, a.toJson().toString())
         return dict

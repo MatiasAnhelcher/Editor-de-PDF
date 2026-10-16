@@ -853,6 +853,8 @@ class EditorActivity : AppCompatActivity(), PdfDocumentView.Listener {
                             ))
                         }
                         store.commit(AnnotationStore.Change(emptyList(), listOf(t)))
+                        // El cuadro nuevo queda elegido para poder acomodarlo enseguida.
+                        pdfView.selectText(t.id)
                     }
                 } else if (text.isBlank()) {
                     store.commit(AnnotationStore.Change(listOf(existing), emptyList()))
