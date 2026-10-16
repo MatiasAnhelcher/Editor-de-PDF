@@ -92,6 +92,7 @@ object SummaryExporter {
     fun kindName(a: Annotation): String = when {
         a is TextAnnotation -> "Nota"
         a is InkAnnotation && a.kind == InkKind.UNDERLINE -> "Subrayado"
+        a is InkAnnotation && a.kind == InkKind.STRIKE -> "Tachado"
         else -> "Resaltado"
     }
 }

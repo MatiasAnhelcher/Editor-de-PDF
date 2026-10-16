@@ -13,7 +13,7 @@ object TextSnap {
 
     /** Devuelve los trazos ajustados (uno por renglón) o null si no hay texto cerca. Lento: fuera del hilo principal. */
     fun snap(text: StudyText, a: InkAnnotation): List<InkAnnotation>? {
-        if (a.pointCount < 2 || a.kind == InkKind.PEN) return null
+        if (a.pointCount < 2 || a.kind == InkKind.PEN || a.kind == InkKind.SHAPE) return null
         val pt = text.pageText(a.page)
         if (pt.boxes.none { !it.isEmpty }) return null
         // El subrayado se dibuja debajo del renglón: buscamos el texto un poco más arriba.
@@ -41,6 +41,11 @@ object TextSnap {
             if (a.kind == InkKind.HIGHLIGHTER) {
                 val y = r.centerY()
                 InkAnnotation(id, a.page, a.kind, a.color, max(r.height() * 1.05f, 4f),
+                    floatArrayOf(r.left, y, 0.5f, r.right, y, 0.5f), true)
+            } else if (a.kind == InkKind.STRIKE) {
+                // El tachado cruza el renglón un poco por debajo de la mitad (la altura de las minúsculas).
+                val y = r.top + r.height() * 0.56f
+                InkAnnotation(id, a.page, a.kind, a.color, a.width,
                     floatArrayOf(r.left, y, 0.5f, r.right, y, 0.5f), true)
             } else {
                 val y = r.bottom + a.width / 2f + 0.5f
@@ -85,7 +90,7 @@ object ImageSnap {
     private const val SCALE = 3f
 
     fun snap(renderer: PageRenderer, a: InkAnnotation, pageWidth: Float, pageHeight: Float): List<InkAnnotation>? {
-        if (a.pointCount < 2 || a.kind == InkKind.PEN) return null
+        if (a.pointCount < 2 || a.kind == InkKind.PEN || a.kind == InkKind.SHAPE) return null
         val last = a.pointCount - 1
         val lift = if (a.kind == InkKind.UNDERLINE) 5f else 0f
         val sx0 = minOf(a.x(0), a.x(last))
@@ -176,6 +181,10 @@ object ImageSnap {
             val cy = (t + b) / 2f
             InkAnnotation(a.id, a.page, a.kind, a.color, max((b - t) * 1.15f + 1f, 4f),
                 floatArrayOf(l - 1f, cy, 0.5f, r + 1f, cy, 0.5f), true)
+        } else if (a.kind == InkKind.STRIKE) {
+            val sy = t + (b - t) * 0.56f
+            InkAnnotation(a.id, a.page, a.kind, a.color, a.width,
+                floatArrayOf(l, sy, 0.5f, r, sy, 0.5f), true)
         } else {
             val uy = b + a.width / 2f + 0.8f
             InkAnnotation(a.id, a.page, a.kind, a.color, a.width,

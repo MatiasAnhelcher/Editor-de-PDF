@@ -20,6 +20,11 @@ class Settings(context: Context) {
         get() = runCatching { ReadingMode.valueOf(prefs.getString("reading_mode", null) ?: "") }.getOrDefault(ReadingMode.NORMAL)
         set(v) = prefs.edit().putString("reading_mode", v.name).apply()
 
+    var shapeType: com.matias.editorpdf.model.ShapeType
+        get() = runCatching { com.matias.editorpdf.model.ShapeType.valueOf(prefs.getString("shape", null) ?: "") }
+            .getOrDefault(com.matias.editorpdf.model.ShapeType.RECT)
+        set(v) = prefs.edit().putString("shape", v.name).apply()
+
     var stylusOnly: Boolean
         get() = prefs.getBoolean("stylus_only", true)
         set(v) = prefs.edit().putBoolean("stylus_only", v).apply()
@@ -55,6 +60,9 @@ class Settings(context: Context) {
             Tool.HIGHLIGHTER -> HIGHLIGHT_COLORS
             Tool.UNDERLINE -> listOf(0xFFD32F2F, 0xFF1565C0, 0xFF000000, 0xFF2E7D32, 0xFF6A1B9A, 0xFFEF6C00).map { it.toInt() }
             Tool.LASSO -> PEN_COLORS + HIGHLIGHT_COLORS
+            Tool.STRIKE -> listOf(0xFFD32F2F, 0xFF000000, 0xFF1565C0, 0xFF6A1B9A).map { it.toInt() }
+            Tool.NOTE -> listOf(0xFFFFC107, 0xFFFF7043, 0xFF66BB6A, 0xFF42A5F5, 0xFFAB47BC, 0xFF78909C).map { it.toInt() }
+            Tool.SHAPE -> listOf(0xFFC62828, 0xFF000000, 0xFF1A237E, 0xFF2E7D32, 0xFF6A1B9A, 0xFFEF6C00).map { it.toInt() }
             else -> PEN_COLORS
         }
 
@@ -75,6 +83,8 @@ class Settings(context: Context) {
             Tool.HIGHLIGHTER -> Range(4f, 24f, 12f)
             Tool.UNDERLINE -> Range(0.5f, 4f, 1.5f)
             Tool.TEXT -> Range(6f, 36f, 12f)
+            Tool.STRIKE -> Range(0.5f, 4f, 1.4f)
+            Tool.SHAPE -> Range(0.5f, 8f, 2f)
             else -> Range(0.5f, 6f, 1.6f)
         }
     }

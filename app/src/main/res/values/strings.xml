@@ -195,4 +195,15 @@
     <string name="read_aloud_unavailable">Este dispositivo no tiene un motor de voz disponible.</string>
     <string name="read_aloud_no_text">Esta página no tiene texto para leer (puede ser una imagen escaneada).</string>
     <string name="stop">Detener</string>
+    <string name="tool_strike">Tachado</string>
+    <string name="tool_shape">Formas</string>
+    <string name="tool_note">Nota adhesiva</string>
+    <string name="shape_rect">Rectángulo</string>
+    <string name="shape_ellipse">Círculo</string>
+    <string name="shape_line">Línea</string>
+    <string name="shape_arrow">Flecha</string>
+    <string name="kind_strike">Tachado</string>
+    <string name="add_note">Nueva nota</string>
+    <string name="sticky_note">Nota</string>
+    <string name="note_hint">Escribe tu comentario…</string>
 </resources>

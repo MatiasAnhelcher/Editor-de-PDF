@@ -77,7 +77,7 @@ object PdfAnnotationIO {
                     for (a in mine) {
                         val built = when (a) {
                             is InkAnnotation -> buildInk(doc, page, geometry, a)
-                            is TextAnnotation -> buildText(doc, page, geometry, a, fonts)
+                            is TextAnnotation -> if (a.sticky) buildNote(page, geometry, a) else buildText(doc, page, geometry, a, fonts)
                         }
                         if (built != null) list.add(built)
                     }
@@ -180,6 +180,17 @@ object PdfAnnotationIO {
         dict.setString(COSName.getPDFName("Contents"), t.text)
         dict.setItem(COSName.getPDFName("C"), colorArray(t.color))
         setAppearance(dict, appearance)
+        return PDAnnotation.createAnnotation(dict)
+    }
+
+    /** Nota adhesiva como comentario PDF estándar (/Text): Adobe y los demás lectores la muestran con su propio ícono. */
+    private fun buildNote(page: PDPage, g: Affine, t: TextAnnotation): PDAnnotation {
+        val rect = g.mapRect(RectF(t.bounds))
+        val dict = baseDict(page, "Text", rect, t)
+        dict.setString(COSName.getPDFName("Contents"), t.text)
+        dict.setItem(COSName.getPDFName("C"), colorArray(t.color))
+        dict.setItem(COSName.getPDFName("Name"), COSName.getPDFName("Comment"))
+        dict.setBoolean(COSName.getPDFName("Open"), false)
         return PDAnnotation.createAnnotation(dict)
     }
 
