@@ -156,7 +156,7 @@ object PdfAnnotationIO {
         val widths = lines.map { line ->
             runCatching { font.getStringWidth(line) / 1000f * t.size }.getOrDefault(line.length * t.size * 0.5f)
         }
-        val w = max(widths.maxOrNull() ?: 0f, t.size * 0.5f)
+        val w = if (t.boxWidth > 0f) t.boxWidth else max(widths.maxOrNull() ?: 0f, t.size * 0.5f)
         val h = (lines.size - 1) * t.size * TextAnnotation.LINE_SPACING + t.size * 1.2f
         val rect = g.mapRect(RectF(t.x - 1f, t.y - 1f, t.x + w + 1f, t.y + h + 1f))
 
