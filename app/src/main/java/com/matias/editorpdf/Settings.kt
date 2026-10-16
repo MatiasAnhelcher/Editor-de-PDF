@@ -15,6 +15,11 @@ class Settings(context: Context) {
         set(v) = prefs.edit().putString("tool", v.name).apply()
 
     /** true: solo el lápiz (S Pen) escribe y el dedo sirve para moverse y hacer zoom. */
+    /** Cómo se pintan las hojas: normal, sepia (cálido) o noche (oscuro). */
+    var readingMode: ReadingMode
+        get() = runCatching { ReadingMode.valueOf(prefs.getString("reading_mode", null) ?: "") }.getOrDefault(ReadingMode.NORMAL)
+        set(v) = prefs.edit().putString("reading_mode", v.name).apply()
+
     var stylusOnly: Boolean
         get() = prefs.getBoolean("stylus_only", true)
         set(v) = prefs.edit().putBoolean("stylus_only", v).apply()
@@ -143,3 +148,5 @@ class Bookmarks(context: Context) {
         prefs.edit().putString(uri.toString(), arr.toString()).apply()
     }
 }
+
+enum class ReadingMode { NORMAL, SEPIA, NIGHT }

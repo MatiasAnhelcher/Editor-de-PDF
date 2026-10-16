@@ -87,7 +87,10 @@ class MainActivity : AppCompatActivity() {
         updater = Updater(this)
         updateBanner = findViewById(R.id.update_banner)
         updateText = findViewById(R.id.update_text)
-        findViewById<View>(R.id.update_button).setOnClickListener { available?.let { startUpdate(it) } }
+        findViewById<View>(R.id.update_button).setOnClickListener {
+            val apk = readyApk
+            if (apk != null && apk.exists()) installNow(apk) else available?.let { startUpdate(it) }
+        }
         findViewById<MaterialToolbar>(R.id.toolbar).apply {
             inflateMenu(R.menu.main)
             setOnMenuItemClickListener {
@@ -95,16 +98,29 @@ class MainActivity : AppCompatActivity() {
                     R.id.action_updates -> checkForUpdates(manual = true)
                     R.id.action_reminder -> chooseReminder()
                     R.id.action_icon -> chooseIcon()
+                    R.id.action_about -> showAbout()
                 }
                 true
             }
         }
-        if (savedInstanceState == null && updater.shouldAutoCheck()) checkForUpdates(manual = false)
+        if (intent?.getBooleanExtra(AutoUpdates.EXTRA_SHOW_UPDATE, false) == true) {
+            // Se abrió desde la notificación de versión nueva: mostrar enseguida qué trae.
+            checkForUpdates(manual = false, prompt = true)
+        } else if (savedInstanceState == null && updater.shouldAutoCheck()) {
+            checkForUpdates(manual = false)
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        if (intent.getBooleanExtra(AutoUpdates.EXTRA_SHOW_UPDATE, false)) checkForUpdates(manual = false, prompt = true)
     }
 
     override fun onResume() {
         super.onResume()
         refresh()
+        // Volver a la app también busca (como mucho una vez por hora).
+        if (AutoUpdates.isEnabled(this) && updater.shouldAutoCheck()) checkForUpdates(manual = false)
         // Volvemos de dar el permiso de instalar: seguimos con la actualización.
         val r = pendingInstall
         if (r != null && updater.canInstall()) {
@@ -115,7 +131,11 @@ class MainActivity : AppCompatActivity() {
 
     // --- Actualizaciones -------------------------------------------------------------------
 
-    private fun checkForUpdates(manual: Boolean) {
+    /** APK de la versión nueva ya descargado en segundo plano, listo para instalar con un toque. */
+    private var readyApk: java.io.File? = null
+    private var prefetching: Job? = null
+
+    private fun checkForUpdates(manual: Boolean, prompt: Boolean = false) {
         if (checking?.isActive == true) return
         val dialog = if (manual) {
             MaterialAlertDialogBuilder(this)
@@ -131,6 +151,8 @@ class MainActivity : AppCompatActivity() {
             result.onSuccess { release ->
                 available = release
                 showBanner()
+                if (prompt && release != null) askUpdate(release)
+                if (!manual && release != null && AutoUpdates.isEnabled(this@MainActivity)) prefetch(release)
                 if (manual) {
                     if (release != null) {
                         askUpdate(release)
@@ -157,7 +179,77 @@ class MainActivity : AppCompatActivity() {
     private fun showBanner() {
         val r = available
         updateBanner.isVisible = r != null
-        if (r != null) updateText.text = getString(R.string.update_available, r.name, updater.currentVersionName)
+        if (r == null) return
+        val ready = readyApk?.exists() == true
+        updateText.text = if (ready) {
+            getString(R.string.update_ready, r.name)
+        } else {
+            getString(R.string.update_available, r.name, updater.currentVersionName)
+        }
+        findViewById<com.google.android.material.button.MaterialButton>(R.id.update_button)
+            .setText(if (ready) R.string.update_install else R.string.update_now)
+    }
+
+    /** Descarga la versión nueva sin molestar; cuando termina, el aviso ofrece instalarla al toque. */
+    private fun prefetch(r: Updater.Release) {
+        if (prefetching?.isActive == true || !updater.canInstall()) return
+        prefetching = lifecycleScope.launch {
+            runCatching { updater.download(r) { } }.onSuccess { apk ->
+                if (available?.versionCode == r.versionCode) {
+                    readyApk = apk
+                    showBanner()
+                }
+            }
+        }
+    }
+
+    private fun installNow(apk: java.io.File) {
+        val dialog = MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.check_updates)
+            .setMessage(R.string.update_installing)
+            .setCancelable(false)
+            .show()
+        lifecycleScope.launch {
+            val result = runCatching { updater.install(apk) }
+            dialog.dismiss()
+            result.onFailure { e ->
+                MaterialAlertDialogBuilder(this@MainActivity)
+                    .setTitle(R.string.check_updates)
+                    .setMessage(getString(R.string.update_failed, e.message ?: e.javaClass.simpleName))
+                    .setPositiveButton(android.R.string.ok, null)
+                    .show()
+            }
+        }
+    }
+
+    /** Qué es la app, qué versión está instalada y cómo se mantiene al día. */
+    private fun showAbout() {
+        val view = layoutInflater.inflate(R.layout.dialog_about, null)
+        view.findViewById<ImageView>(R.id.about_icon).setImageResource(AppIcon.current(this).preview)
+        view.findViewById<TextView>(R.id.about_version).text =
+            getString(R.string.about_version, updater.currentVersionName, updater.currentVersionCode)
+        val last = AutoUpdates.lastCheck(this)
+        view.findViewById<TextView>(R.id.about_last_check).text = if (last > 0) {
+            getString(
+                R.string.about_last_check,
+                DateUtils.getRelativeTimeSpanString(last, System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS),
+            )
+        } else {
+            getString(R.string.about_never_checked)
+        }
+        view.findViewById<com.google.android.material.materialswitch.MaterialSwitch>(R.id.about_auto).apply {
+            isChecked = AutoUpdates.isEnabled(this@MainActivity)
+            setOnCheckedChangeListener { _, on -> AutoUpdates.setEnabled(this@MainActivity, on) }
+        }
+        val dialog = MaterialAlertDialogBuilder(this)
+            .setView(view)
+            .setPositiveButton(R.string.check_updates) { _, _ -> checkForUpdates(manual = true) }
+            .setNeutralButton(R.string.about_releases) { _, _ ->
+                runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(RELEASES_URL))) }
+            }
+            .setNegativeButton(R.string.close, null)
+            .show()
+        dialog.setCanceledOnTouchOutside(true)
     }
 
     private fun askUpdate(r: Updater.Release) {
@@ -527,5 +619,9 @@ class MainActivity : AppCompatActivity() {
                 true
             }
         }
+    }
+
+    companion object {
+        private const val RELEASES_URL = "https://github.com/MatiasAnhelcher/Editor-de-PDF/releases"
     }
 }

@@ -8,6 +8,8 @@
     <item android:id="@+id/action_undo" android:icon="@drawable/ic_undo" android:title="@string/undo" app:showAsAction="always" />
     <item android:id="@+id/action_redo" android:icon="@drawable/ic_redo" android:title="@string/redo" app:showAsAction="always" />
     <item android:id="@+id/action_save" android:icon="@drawable/ic_save" android:title="@string/save" app:showAsAction="always" />
+    <item android:id="@+id/action_reading_mode" android:title="@string/reading_mode" app:showAsAction="never" />
+    <item android:id="@+id/action_read_aloud" android:title="@string/read_aloud" app:showAsAction="never" />
     <item android:id="@+id/action_cards" android:title="@string/cards" app:showAsAction="never" />
     <item android:id="@+id/action_export" android:title="@string/export_summary" app:showAsAction="never" />
     <item android:id="@+id/action_goto" android:title="@string/goto_page" app:showAsAction="never" />

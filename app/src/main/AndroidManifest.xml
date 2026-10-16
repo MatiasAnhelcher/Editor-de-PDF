@@ -106,6 +106,10 @@
             android:exported="false" />
 
         <receiver
+            android:name=".UpdateCheckReceiver"
+            android:exported="false" />
+
+        <receiver
             android:name=".ReminderReceiver"
             android:exported="true">
             <intent-filter>

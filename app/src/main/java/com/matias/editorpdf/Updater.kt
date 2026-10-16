@@ -145,8 +145,8 @@ class Updater(private val context: Context) {
 
     companion object {
         private const val LATEST_URL = "https://api.github.com/repos/MatiasAnhelcher/Editor-de-PDF/releases/latest"
-        private const val KEY_LAST_CHECK = "last_check"
-        private const val AUTO_INTERVAL = 6L * 60 * 60 * 1000
+        const val KEY_LAST_CHECK = "last_check"
+        private const val AUTO_INTERVAL = 60L * 60 * 1000
     }
 }
 

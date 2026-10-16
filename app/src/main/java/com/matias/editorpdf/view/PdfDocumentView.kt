@@ -151,12 +151,44 @@ class PdfDocumentView @JvmOverloads constructor(
     // --- Pintura ---------------------------------------------------------------------------
     private val bitmapPaint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG)
     private val pagePaint = Paint().apply { color = Color.WHITE }
+    private val readingPaint = Paint()
+
+    /**
+     * Modo de lectura. Sepia y noche tiñen la hoja entera (con lo escrito encima), como si se
+     * imprimiera en otro papel, para cansar menos la vista.
+     */
+    var readingMode: com.matias.editorpdf.ReadingMode = com.matias.editorpdf.ReadingMode.NORMAL
+        set(value) {
+            field = value
+            readingPaint.colorFilter = when (value) {
+                com.matias.editorpdf.ReadingMode.NORMAL -> null
+                // Blanco → papel crema, negro → marrón muy oscuro.
+                com.matias.editorpdf.ReadingMode.SEPIA -> android.graphics.ColorMatrixColorFilter(
+                    floatArrayOf(
+                        0.82f, 0f, 0f, 0f, 40f,
+                        0f, 0.82f, 0f, 0f, 30f,
+                        0f, 0f, 0.78f, 0f, 20f,
+                        0f, 0f, 0f, 1f, 0f,
+                    )
+                )
+                // Invierte con suavidad: el blanco pasa a gris casi negro y el negro a gris claro.
+                com.matias.editorpdf.ReadingMode.NIGHT -> android.graphics.ColorMatrixColorFilter(
+                    floatArrayOf(
+                        -0.85f, 0f, 0f, 0f, 232f,
+                        0f, -0.85f, 0f, 0f, 232f,
+                        0f, 0f, -0.85f, 0f, 228f,
+                        0f, 0f, 0f, 1f, 0f,
+                    )
+                )
+            }
+            invalidate()
+        }
     private val shadowPaint = Paint().apply { color = 0x1A000000 }
     private val backgroundColor = context.getColor(com.matias.editorpdf.R.color.c_canvas)
     private val painter = AnnotationPainter()
     private val selectionPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
-        color = 0xFF1E88E5.toInt()
+        color = 0xFF5B4BC4.toInt()
     }
     private val textFramePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
@@ -442,6 +474,7 @@ class PdfDocumentView @JvmOverloads constructor(
         for (i in visFirst..visLast) {
             pageScreenRect(i, pr)
             canvas.drawRect(pr.left + shadow, pr.top + shadow, pr.right + shadow, pr.bottom + shadow, shadowPaint)
+            val layer = if (readingPaint.colorFilter != null) canvas.saveLayer(pr, readingPaint) else -1
             canvas.drawRect(pr, pagePaint)
             val base = baseCache.get(i)
             if (base != null) canvas.drawBitmap(base, null, pr, bitmapPaint) else requestBase(i)
@@ -453,6 +486,7 @@ class PdfDocumentView @JvmOverloads constructor(
                 canvas.drawBitmap(d.bitmap, null, tmpRect, bitmapPaint)
             }
             drawPageAnnotations(canvas, i, pr, s)
+            if (layer >= 0) canvas.restoreToCount(layer)
         }
         if (visFirst > 0 && baseCache.get(visFirst - 1) == null) requestBase(visFirst - 1)
         if (visLast + 1 < sizes.size && baseCache.get(visLast + 1) == null) requestBase(visLast + 1)
@@ -1298,6 +1332,6 @@ class PdfDocumentView @JvmOverloads constructor(
         private const val MIN_BOX_WIDTH = 24f
 
         /** Color del marco y las manijas del cuadro de texto elegido. */
-        private const val TEXT_ACCENT = 0xFF4F6BED.toInt()
+        private const val TEXT_ACCENT = 0xFF5B4BC4.toInt()
     }
 }
