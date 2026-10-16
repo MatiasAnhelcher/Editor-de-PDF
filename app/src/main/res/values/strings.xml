@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Editor de PDF</string>
+    <string name="open_pdf">Abrir PDF</string>
+    <string name="recent">Recientes</string>
+    <string name="no_recent">Todavía no abriste ningún PDF.\nToca «Abrir PDF» para elegir uno de tu tablet.</string>
+    <string name="home_tip">Con el S Pen escribes y resaltas. Con el dedo te mueves por el documento y haces zoom con dos dedos. Mantén apretado el botón del S Pen para borrar.</string>
+    <string name="untitled">Sin nombre</string>
+    <string name="recent_subtitle">Página %1$d · %2$s</string>
+    <string name="remove_recent_message">¿Quitar este PDF de la lista de recientes? El archivo no se borra.</string>
+    <string name="remove">Quitar</string>
+
+    <string name="back">Volver</string>
+    <string name="undo">Deshacer</string>
+    <string name="redo">Rehacer</string>
+    <string name="save">Guardar</string>
+    <string name="save_copy">Guardar una copia</string>
+    <string name="goto_page">Ir a la página</string>
+    <string name="goto_hint">Número (1 a %1$d)</string>
+    <string name="share">Compartir PDF</string>
+    <string name="finger_draw">Dibujar también con el dedo</string>
+    <string name="finger_navigates">El dedo ahora solo mueve y hace zoom</string>
+    <string name="finger_draws">Ahora también puedes escribir con el dedo</string>
+    <string name="page_indicator">%1$d / %2$d</string>
+    <string name="unsaved_changes">Cambios sin guardar</string>
+
+    <string name="tool_hand">✋ Mover</string>
+    <string name="tool_pen">✏️ Lápiz</string>
+    <string name="tool_highlighter">🖍️ Resaltar</string>
+    <string name="tool_underline">〰️ Subrayar</string>
+    <string name="tool_text">🔤 Texto</string>
+    <string name="tool_eraser">🧽 Borrar</string>
+    <string name="color">Color</string>
+    <string name="stroke_width">Grosor: %1$s</string>
+    <string name="text_size">Tamaño: %1$s</string>
+    <string name="straight_line">Trazo recto</string>
+
+    <string name="add_text">Agregar texto</string>
+    <string name="edit_text">Editar texto</string>
+    <string name="text_hint">Escribe tu nota</string>
+    <string name="delete">Eliminar</string>
+
+    <string name="saved">Cambios guardados en el PDF</string>
+    <string name="copy_saved">Copia guardada</string>
+    <string name="draft_restored">Se recuperaron anotaciones que no se habían guardado</string>
+    <string name="unsaved_title">¿Guardar los cambios?</string>
+    <string name="unsaved_message">Tienes anotaciones sin guardar en este PDF.</string>
+    <string name="discard">Descartar</string>
+    <string name="read_only_title">No se puede modificar este archivo</string>
+    <string name="read_only_message">La app desde la que abriste el PDF solo permite leerlo. Guarda una copia y seguirás trabajando sobre ella.\n\nPara guardar directamente en el original, ábrelo desde el botón «Abrir PDF» de esta app.</string>
+    <string name="error_title">Algo salió mal</string>
+    <string name="error_open">No se pudo abrir el PDF.\n\n%1$s</string>
+    <string name="error_save">No se pudo guardar.\n\n%1$s</string>
+    <string name="error_not_found">No se encontró el archivo. Puede que se haya movido o borrado.</string>
+    <string name="error_protected_or_denied">No se pudo abrir el PDF: está protegido con contraseña o la app ya no tiene permiso para leerlo. Ábrelo de nuevo con «Abrir PDF».</string>
+</resources>
