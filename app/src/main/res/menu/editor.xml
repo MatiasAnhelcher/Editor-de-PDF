@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item android:id="@+id/action_search" android:icon="@drawable/ic_search" android:title="@string/search" app:showAsAction="always" />
+    <item android:id="@+id/action_panel" android:icon="@drawable/ic_list" android:title="@string/study_panel" app:showAsAction="always" />
+    <item android:id="@+id/action_bookmark" android:icon="@drawable/ic_bookmark_border" android:title="@string/bookmark_page" app:showAsAction="always" />
+    <item android:id="@+id/action_review" android:icon="@drawable/ic_review" android:title="@string/review_mode" app:showAsAction="always" />
+    <item android:id="@+id/action_undo" android:icon="@drawable/ic_undo" android:title="@string/undo" app:showAsAction="always" />
+    <item android:id="@+id/action_redo" android:icon="@drawable/ic_redo" android:title="@string/redo" app:showAsAction="always" />
+    <item android:id="@+id/action_save" android:icon="@drawable/ic_save" android:title="@string/save" app:showAsAction="always" />
+    <item android:id="@+id/action_goto" android:title="@string/goto_page" app:showAsAction="never" />
+    <item android:id="@+id/action_save_copy" android:title="@string/save_copy" app:showAsAction="never" />
+    <item android:id="@+id/action_share" android:title="@string/share" app:showAsAction="never" />
+    <item android:id="@+id/action_finger" android:checkable="true" android:title="@string/finger_draw" app:showAsAction="never" />
+</menu>

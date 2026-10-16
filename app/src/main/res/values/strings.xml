@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Editor de PDF</string>
+    <string name="open_pdf">Abrir PDF</string>
+    <string name="recent">Recientes</string>
+    <string name="no_recent">Todavía no abriste ningún PDF.\nToca «Abrir PDF» para elegir uno de tu tablet.</string>
+    <string name="home_tip">Con el S Pen escribes y resaltas. Con el dedo te mueves por el documento y haces zoom con dos dedos. Mantén apretado el botón del S Pen para borrar.</string>
+    <string name="untitled">Sin nombre</string>
+    <string name="recent_subtitle">Página %1$d · %2$s</string>
+    <string name="remove_recent_message">¿Quitar este PDF de la lista de recientes? El archivo no se borra.</string>
+    <string name="remove">Quitar</string>
+
+    <string name="back">Volver</string>
+    <string name="undo">Deshacer</string>
+    <string name="redo">Rehacer</string>
+    <string name="save">Guardar</string>
+    <string name="save_copy">Guardar una copia</string>
+    <string name="goto_page">Ir a la página</string>
+    <string name="goto_hint">Número (1 a %1$d)</string>
+    <string name="share">Compartir PDF</string>
+    <string name="finger_draw">Dibujar también con el dedo</string>
+    <string name="finger_navigates">El dedo ahora solo mueve y hace zoom</string>
+    <string name="finger_draws">Ahora también puedes escribir con el dedo</string>
+    <string name="page_indicator">%1$d / %2$d</string>
+    <string name="unsaved_changes">Cambios sin guardar</string>
+
+    <string name="tool_hand">✋ Mover</string>
+    <string name="tool_pen">✏️ Lápiz</string>
+    <string name="tool_highlighter">🖍️ Resaltar</string>
+    <string name="tool_underline">〰️ Subrayar</string>
+    <string name="tool_text">🔤 Texto</string>
+    <string name="tool_eraser">🧽 Borrar</string>
+    <string name="color">Color</string>
+    <string name="stroke_width">Grosor: %1$s</string>
+    <string name="text_size">Tamaño: %1$s</string>
+    <string name="straight_line">Trazo recto</string>
+
+    <string name="add_text">Agregar texto</string>
+    <string name="edit_text">Editar texto</string>
+    <string name="text_hint">Escribe tu nota</string>
+    <string name="delete">Eliminar</string>
+
+    <string name="saved">Cambios guardados en el PDF</string>
+    <string name="copy_saved">Copia guardada</string>
+    <string name="draft_restored">Se recuperaron anotaciones que no se habían guardado</string>
+    <string name="unsaved_title">¿Guardar los cambios?</string>
+    <string name="unsaved_message">Tienes anotaciones sin guardar en este PDF.</string>
+    <string name="discard">Descartar</string>
+    <string name="read_only_title">No se puede modificar este archivo</string>
+    <string name="read_only_message">La app desde la que abriste el PDF solo permite leerlo. Guarda una copia y seguirás trabajando sobre ella.\n\nPara guardar directamente en el original, ábrelo desde el botón «Abrir PDF» de esta app.</string>
+    <string name="error_title">Algo salió mal</string>
+    <string name="error_open">No se pudo abrir el PDF.\n\n%1$s</string>
+    <string name="error_save">No se pudo guardar.\n\n%1$s</string>
+    <string name="error_not_found">No se encontró el archivo. Puede que se haya movido o borrado.</string>
+    <string name="error_protected_or_denied">No se pudo abrir el PDF: está protegido con contraseña o la app ya no tiene permiso para leerlo. Ábrelo de nuevo con «Abrir PDF».</string>
+
+    <string name="search">Buscar</string>
+    <string name="study_panel">Índice, marcadores y resaltados</string>
+    <string name="bookmark_page">Marcar página</string>
+    <string name="bookmark_added">Página %1$d marcada</string>
+    <string name="bookmark_removed">Marcador quitado</string>
+    <string name="review_mode">Modo repaso</string>
+    <string name="review_tip">Repaso: toca lo tapado para ver si lo recordabas.</string>
+    <string name="review_show_all">Mostrar todo</string>
+    <string name="review_hide_all">Tapar todo</string>
+    <string name="review_exit">Salir</string>
+    <string name="close">Cerrar</string>
+    <string name="tab_outline">Índice</string>
+    <string name="tab_bookmarks">Marcadores</string>
+    <string name="tab_highlights">Resaltados</string>
+    <string name="tab_search">Buscar</string>
+    <string name="loading">Cargando…</string>
+    <string name="no_outline">Este PDF no trae índice. Usa los marcadores para guardar las páginas importantes.</string>
+    <string name="no_bookmarks">No marcaste páginas todavía. Toca el ícono de marcador arriba para marcar la página actual.</string>
+    <string name="bookmarks_hint">Mantén apretado un marcador para quitarlo.</string>
+    <string name="no_highlights">Todavía no hay resaltados, subrayados ni notas en este PDF.</string>
+    <string name="kind_note">Nota</string>
+    <string name="kind_highlight">Resaltado</string>
+    <string name="kind_underline">Subrayado</string>
+    <string name="page_n">Página %1$d</string>
+    <string name="search_hint">Palabra o frase</string>
+    <string name="search_tip">Busca en todo el PDF, sin importar mayúsculas ni tildes.</string>
+    <string name="searching">Buscando… página %1$d de %2$d</string>
+    <string name="search_none">No se encontró «%1$s».</string>
+    <string name="search_count">%1$d resultados</string>
+    <string name="search_scanned">Este PDF parece escaneado (sus páginas son imágenes), así que no se puede buscar texto en él.</string>
+</resources>
