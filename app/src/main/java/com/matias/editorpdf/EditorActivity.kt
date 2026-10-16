@@ -264,7 +264,11 @@ class EditorActivity : AppCompatActivity(), PdfDocumentView.Listener {
                 loaded.sizes.firstOrNull()?.let { first ->
                     ioScope.launch { runCatching { Covers.ensure(applicationContext, s.uri.toString(), loaded.renderer, first.width, first.height) } }
                 }
-                store.load(loaded.annotations.annotations, dirty = loaded.annotations.fromDraft)
+                // Las notas de texto de versiones anteriores no tenían cuadro y podían salirse de la hoja.
+                val annotations = loaded.annotations.annotations.map { a ->
+                    if (a is TextAnnotation) fitToPage(a, loaded.sizes.getOrNull(a.page)?.width ?: 612f) else a
+                }
+                store.load(annotations, dirty = loaded.annotations.fromDraft)
                 pdfView.setDocument(loaded.renderer, loaded.sizes, recents.lastPage(s.uri))
                 if (loaded.annotations.fromDraft) {
                     Snackbar.make(pdfView, R.string.draft_restored, Snackbar.LENGTH_LONG).show()
@@ -853,10 +857,7 @@ class EditorActivity : AppCompatActivity(), PdfDocumentView.Listener {
                 } else if (text.isBlank()) {
                     store.commit(AnnotationStore.Change(listOf(existing), emptyList()))
                 } else if (text != existing.text) {
-                    val edited = existing.withText(text)
-                    // Las notas de antes no tenían cuadro: al editarlas pasan a tenerlo.
-                    val boxed = if (edited.boxWidth > 0f) edited else fitTextBox(edited)
-                    store.commit(AnnotationStore.Change(listOf(existing), listOf(boxed)))
+                    store.commit(AnnotationStore.Change(listOf(existing), listOf(existing.withText(text))))
                 }
             }
             .setNegativeButton(android.R.string.cancel, null)
@@ -875,8 +876,20 @@ class EditorActivity : AppCompatActivity(), PdfDocumentView.Listener {
      * Cuadro para un texto tocado (sin dibujar): tan ancho como el texto, pero sin pasarse del margen
      * derecho de la página; si no entra, el texto baja de renglón dentro del cuadro.
      */
-    private fun fitTextBox(t: TextAnnotation): TextAnnotation {
-        val pageWidth = pageSizes.getOrNull(t.page)?.width ?: 612f
+    private fun fitTextBox(t: TextAnnotation): TextAnnotation =
+        fitTextBox(t, pageSizes.getOrNull(t.page)?.width ?: 612f)
+
+    /** Deja el cuadro entero dentro de la hoja; si no tenía cuadro, le arma uno. */
+    private fun fitToPage(t: TextAnnotation, pageWidth: Float): TextAnnotation {
+        if (t.boxWidth <= 0f) return fitTextBox(t, pageWidth)
+        if (t.x >= 0f && t.x + t.boxWidth <= pageWidth) return t
+        val margin = 18f
+        val width = t.boxWidth.coerceAtMost(pageWidth - 2 * margin)
+        val x = t.x.coerceIn(0f, max(0f, pageWidth - margin - width))
+        return TextAnnotation(t.id, t.page, x, t.y, t.text, t.color, t.size, width)
+    }
+
+    private fun fitTextBox(t: TextAnnotation, pageWidth: Float): TextAnnotation {
         val margin = 18f
         val natural = TextAnnotation(t.id, t.page, t.x, t.y, t.text, t.color, t.size).bounds.width() + 2f
         val minWidth = t.size * 8f
