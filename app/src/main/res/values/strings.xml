@@ -113,4 +113,19 @@
     <string name="grade_hard">Difícil</string>
     <string name="grade_good">Bien</string>
     <string name="grade_easy">Fácil</string>
+    <string name="check_updates">Buscar actualizaciones</string>
+    <string name="checking_updates">Buscando actualizaciones…</string>
+    <string name="update_available">Hay una versión nueva: %1$s (tienes la %2$s)</string>
+    <string name="update_now">Actualizar</string>
+    <string name="update_later">Más tarde</string>
+    <string name="up_to_date">Ya tienes la última versión (%1$s).</string>
+    <string name="update_check_failed">No se pudo buscar actualizaciones. Revisa la conexión a internet.\n\n%1$s</string>
+    <string name="update_downloading">Descargando la versión %1$s…</string>
+    <string name="update_downloading_percent">Descargando la versión %1$s… %2$d%%</string>
+    <string name="update_installing">Instalando… La app se cerrará sola al terminar; vuelve a abrirla.</string>
+    <string name="update_failed">No se pudo instalar la actualización. %1$s</string>
+    <string name="update_permission_title">Permitir actualizaciones</string>
+    <string name="update_permission_message">Android pide permiso una sola vez para que la app pueda instalar sus propias actualizaciones. Activa «Permitir de esta fuente» y vuelve.</string>
+    <string name="update_permission_go">Ir a ajustes</string>
+    <string name="update_whats_new">Novedades</string>
 </resources>

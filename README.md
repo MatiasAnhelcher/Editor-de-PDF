@@ -8,6 +8,7 @@ abrir, leer, resaltar, subrayar, escribir a mano y agregar notas de texto, guard
 1. En la tablet, abre la página **Releases** de este repositorio y descarga `EditorDePDF.apk` de la última versión.
 2. Ábrelo. Si Android lo pide, permite **Instalar apps desconocidas** para el navegador (o para «Mis archivos»).
 3. Las versiones nuevas se instalan encima de la anterior sin perder nada.
+4. Desde ahí, la app avisa sola cuando hay una versión nueva (o usa ⋮ → **Buscar actualizaciones** en la pantalla de inicio) y la descarga e instala con un toque. La primera vez Android pide permiso para que la app instale sus propias actualizaciones.
 
 Cada cambio en `main` publica una versión nueva. Los APK de otras ramas quedan como artefacto en la pestaña **Actions**.
 
