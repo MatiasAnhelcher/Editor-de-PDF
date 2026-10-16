@@ -38,6 +38,11 @@ La pantalla de inicio es tu **biblioteca**: muestra la portada de cada PDF, cuá
 - **Exportar resumen** (menú ⋮ o panel): arma un PDF aparte con todo lo resaltado y anotado, ordenado por página y con su color.
 - **Tarjetas de repaso** (menú ⋮ o modo repaso): cada resaltado se vuelve una tarjeta con el texto tapado. Calificas qué tan bien lo recordabas y la app te la vuelve a mostrar en el momento justo (repetición espaciada).
 
+### Constancia
+
+- **Tu estudio** (arriba en la biblioteca): racha de días seguidos estudiando (desde 5 minutos por día), anillo con la meta del día (tócalo para cambiarla) y los minutos de los últimos 7 días. El tiempo cuenta solo mientras usas la app: si pasan 2 minutos sin tocarla, se pausa.
+- Al cumplir la meta, la app te avisa con una vibración suave.
+
 ### Uso general
 
 - **S Pen escribe, el dedo navega**: con el dedo te mueves y haces zoom con dos dedos aunque tengas el lápiz seleccionado. La palma apoyada se ignora mientras escribes. Si quieres escribir con el dedo, actívalo en el menú ⋮.

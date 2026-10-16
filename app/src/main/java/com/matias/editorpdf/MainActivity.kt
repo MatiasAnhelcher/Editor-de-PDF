@@ -1,6 +1,15 @@
 package com.matias.editorpdf
 
+import android.app.ActivityOptions
 import android.content.Intent
+import android.os.Build
+import android.view.HapticFeedbackConstants
+import android.view.animation.DecelerateInterpolator
+import com.google.android.material.progressindicator.CircularProgressIndicator
+import com.matias.editorpdf.view.WeekBarsView
+import java.time.LocalTime
+import java.time.format.TextStyle
+import java.util.Locale
 import android.net.Uri
 import android.os.Bundle
 import android.text.format.DateUtils
@@ -34,6 +43,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var empty: View
     private val adapter = RecentAdapter()
     private lateinit var updater: Updater
+    private lateinit var stats: StudyStats
+    private var statsAnimated = false
     private lateinit var updateBanner: View
     private lateinit var updateText: TextView
     private var available: Updater.Release? = null
@@ -58,6 +69,17 @@ class MainActivity : AppCompatActivity() {
         findViewById<View>(R.id.open_button).setOnClickListener {
             openLauncher.launch(arrayOf("application/pdf"))
         }
+
+        stats = StudyStats(this)
+        findViewById<View>(R.id.goal_box).setOnClickListener { chooseGoal() }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            // Al terminar la animación de apertura, el logo se desvanece suavemente.
+            splashScreen.setOnExitAnimationListener { splash ->
+                splash.animate().alpha(0f).scaleX(1.08f).scaleY(1.08f).setDuration(260)
+                    .withEndAction { splash.remove() }.start()
+            }
+        }
+        if (savedInstanceState == null) animateEntrance()
 
         updater = Updater(this)
         updateBanner = findViewById(R.id.update_banner)
@@ -198,7 +220,73 @@ class MainActivity : AppCompatActivity() {
         override fun sizeOf(key: String, value: Bitmap) = value.byteCount
     }
 
+    /** Las secciones de la biblioteca entran escalonadas, de arriba hacia abajo. */
+    private fun animateEntrance() {
+        val ids = listOf(R.id.greeting, R.id.stats_card, R.id.continue_card, R.id.recent_header, R.id.recent_list)
+        val shift = 24 * resources.displayMetrics.density
+        ids.forEachIndexed { i, id ->
+            val v = findViewById<View>(id)
+            v.alpha = 0f
+            v.translationY = shift
+            v.animate().alpha(1f).translationY(0f).setStartDelay(120L + i * 70L).setDuration(420)
+                .setInterpolator(DecelerateInterpolator(2f)).start()
+        }
+    }
+
+    private fun refreshStats() {
+        val hour = LocalTime.now().hour
+        findViewById<TextView>(R.id.greeting).text = getString(
+            when (hour) {
+                in 5..11 -> R.string.greeting_morning
+                in 12..19 -> R.string.greeting_afternoon
+                else -> R.string.greeting_night
+            }
+        )
+        val streak = stats.streak()
+        findViewById<TextView>(R.id.streak_value).text = streak.toString()
+        findViewById<TextView>(R.id.streak_label).text =
+            getString(if (streak == 1) R.string.streak_one_day else R.string.streak_days)
+        findViewById<View>(R.id.streak_icon).alpha = if (streak > 0) 1f else 0.35f
+
+        val today = stats.today()
+        val goal = stats.goalMinutes
+        findViewById<TextView>(R.id.goal_value).text = getString(R.string.goal_value, today.minutes, goal)
+        findViewById<TextView>(R.id.goal_label).text = getString(R.string.goal_unit)
+        val ring = findViewById<CircularProgressIndicator>(R.id.goal_ring)
+        val target = (today.minutes * 1000 / goal.coerceAtLeast(1)).coerceAtMost(1000)
+        if (!statsAnimated) ring.progress = 0
+        ring.setProgressCompat(target, true)
+        findViewById<TextView>(R.id.today_detail).text = when {
+            today.minutes >= goal -> getString(R.string.today_detail_done, today.pages)
+            today.minutes == 0 -> getString(R.string.today_detail_start, StudyStats.MIN_MINUTES)
+            else -> getString(R.string.today_detail_pending, goal - today.minutes, today.pages)
+        }
+        val week = stats.week()
+        val locale = Locale.getDefault()
+        findViewById<WeekBarsView>(R.id.week_bars).setData(
+            week.map { it.minutes },
+            week.map { it.date.dayOfWeek.getDisplayName(TextStyle.NARROW, locale).uppercase(locale) },
+            goal,
+            animate = !statsAnimated,
+        )
+        statsAnimated = true
+    }
+
+    private fun chooseGoal() {
+        val goals = StudyStats.GOALS
+        val labels = goals.map { getString(R.string.goal_option, it) }.toTypedArray()
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.goal_title)
+            .setSingleChoiceItems(labels, goals.indexOf(stats.goalMinutes)) { d, which ->
+                stats.goalMinutes = goals[which]
+                d.dismiss()
+                refreshStats()
+            }
+            .show()
+    }
+
     private fun refresh() {
+        refreshStats()
         val all = recents.list()
         val first = all.firstOrNull()
         adapter.items = all.drop(1)
@@ -215,7 +303,7 @@ class MainActivity : AppCompatActivity() {
                 progress = progressOf(first)
             }
             loadCover(findViewById<AspectImageView>(R.id.continue_cover), first.uri)
-            val go = View.OnClickListener { open(Uri.parse(first.uri)) }
+            val go = View.OnClickListener { open(Uri.parse(first.uri), findViewById(R.id.continue_cover)) }
             card.setOnClickListener(go)
             card.setOnLongClickListener {
                 confirmRemove(first)
@@ -263,13 +351,19 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun open(uri: Uri) {
+    private fun open(uri: Uri, from: View? = null) {
         Uris.persist(this, uri)
-        startActivity(
-            Intent(this, EditorActivity::class.java)
-                .setData(uri)
-                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-        )
+        val intent = Intent(this, EditorActivity::class.java)
+            .setData(uri)
+            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+        if (from != null) {
+            // El documento se abre "creciendo" desde su portada.
+            from.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
+            val options = ActivityOptions.makeScaleUpAnimation(from, 0, 0, from.width, from.height)
+            startActivity(intent, options.toBundle())
+        } else {
+            startActivity(intent)
+        }
     }
 
     private inner class RecentAdapter : RecyclerView.Adapter<RecentAdapter.Holder>() {
@@ -294,7 +388,7 @@ class MainActivity : AppCompatActivity() {
             holder.progress.isVisible = item.pages > 0
             holder.progress.progress = progressOf(item)
             loadCover(holder.cover, item.uri)
-            holder.itemView.setOnClickListener { open(Uri.parse(item.uri)) }
+            holder.itemView.setOnClickListener { open(Uri.parse(item.uri), holder.cover) }
             holder.itemView.setOnLongClickListener {
                 confirmRemove(item)
                 true

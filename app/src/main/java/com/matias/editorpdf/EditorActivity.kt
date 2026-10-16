@@ -53,6 +53,14 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import android.view.HapticFeedbackConstants
+import android.view.MotionEvent
+import android.view.ViewGroup
+import android.transition.AutoTransition
+import android.transition.TransitionManager
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.FileNotFoundException
@@ -117,6 +125,7 @@ class EditorActivity : AppCompatActivity(), PdfDocumentView.Listener {
 
         settings = Settings(this)
         recents = Recents(this)
+        stats = StudyStats(this)
         pdfView = findViewById(R.id.pdf_view)
         toolbar = findViewById(R.id.toolbar)
         progress = findViewById(R.id.progress)
@@ -165,8 +174,47 @@ class EditorActivity : AppCompatActivity(), PdfDocumentView.Listener {
         load()
     }
 
+    // --- Tiempo de estudio --------------------------------------------------------------------
+
+    private lateinit var stats: StudyStats
+    private var lastInteraction = 0L
+    private var studyTicker: Job? = null
+
+    override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+        lastInteraction = System.currentTimeMillis()
+        return super.dispatchTouchEvent(ev)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        lastInteraction = System.currentTimeMillis()
+        studyTicker?.cancel()
+        // Cuenta el tiempo solo mientras se usa la app: si pasan 2 minutos sin tocar nada, se pausa.
+        studyTicker = lifecycleScope.launch {
+            while (isActive) {
+                delay(TICK_MS)
+                if (renderer == null || System.currentTimeMillis() - lastInteraction > IDLE_MS) continue
+                val goal = stats.goalMinutes
+                val before = stats.today().minutes
+                stats.addSeconds((TICK_MS / 1000).toInt())
+                if (before < goal && stats.today().minutes >= goal) celebrateGoal()
+            }
+        }
+    }
+
+    private fun celebrateGoal() {
+        pdfView.performHapticFeedback(
+            if (android.os.Build.VERSION.SDK_INT >= 30) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.LONG_PRESS
+        )
+        val streak = stats.streak()
+        val msg = if (streak > 1) getString(R.string.goal_reached_streak, streak) else getString(R.string.goal_reached)
+        Snackbar.make(pdfView, msg, Snackbar.LENGTH_LONG).show()
+    }
+
     override fun onPause() {
         super.onPause()
+        studyTicker?.cancel()
+        studyTicker = null
         val s = session ?: return
         if (renderer != null) recents.setPage(s.uri, pdfView.currentPage)
         if (store.isDirty) {
@@ -574,7 +622,15 @@ class EditorActivity : AppCompatActivity(), PdfDocumentView.Listener {
     private fun setupTools() {
         val initial = settings.tool
         for ((id, tool) in toolButtons) {
-            findViewById<View>(id).setOnClickListener {
+            findViewById<View>(id).setOnClickListener { button ->
+                button.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                (toolPanel.parent as? ViewGroup)?.let {
+                    TransitionManager.beginDelayedTransition(it, AutoTransition().setDuration(180))
+                }
+                button.animate().scaleX(0.88f).scaleY(0.88f).setDuration(70).withEndAction {
+                    button.animate().scaleX(1f).scaleY(1f).setDuration(160)
+                        .setInterpolator(android.view.animation.OvershootInterpolator(3f)).start()
+                }.start()
                 if (pdfView.tool == tool) {
                     // Tocar otra vez la herramienta elegida muestra u oculta sus opciones.
                     optionsHidden = !optionsHidden
@@ -743,6 +799,8 @@ class EditorActivity : AppCompatActivity(), PdfDocumentView.Listener {
     override fun onPageChanged(page: Int, pageCount: Int) {
         pageIndicator.text = getString(R.string.page_indicator, page + 1, pageCount)
         updateBookmarkIcon()
+        lastInteraction = System.currentTimeMillis()
+        if (renderer != null) session?.let { stats.markPage(it.uri.toString(), page) }
     }
 
     override fun onSelectionChanged(count: Int) {
@@ -811,6 +869,11 @@ class EditorActivity : AppCompatActivity(), PdfDocumentView.Listener {
             setPadding(pad, pad / 2, pad, 0)
             addView(v, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT))
         }
+    }
+
+    companion object {
+        private const val TICK_MS = 30_000L
+        private const val IDLE_MS = 120_000L
     }
 }
 

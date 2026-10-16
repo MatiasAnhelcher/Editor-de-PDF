@@ -29,6 +29,7 @@
                 android:paddingHorizontal="32dp">
 
                 <TextView
+                    android:id="@+id/greeting"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/library_overline"
@@ -40,6 +41,133 @@
                     android:layout_marginTop="4dp"
                     android:text="@string/library_title"
                     android:textAppearance="@style/TextAppearance.EditorPDF.Display" />
+
+                <!-- Tu estudio: racha, meta del día y semana -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/stats_card"
+                    style="?attr/materialCardViewFilledStyle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="24dp"
+                    app:cardBackgroundColor="?attr/colorSurfaceContainer"
+                    app:cardCornerRadius="24dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:baselineAligned="false"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:padding="20dp">
+
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_horizontal"
+                            android:minWidth="96dp"
+                            android:orientation="vertical">
+
+                            <ImageView
+                                android:id="@+id/streak_icon"
+                                android:layout_width="32dp"
+                                android:layout_height="32dp"
+                                android:importantForAccessibility="no"
+                                android:src="@drawable/ic_flame" />
+
+                            <TextView
+                                android:id="@+id/streak_value"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="4dp"
+                                android:textAppearance="@style/TextAppearance.EditorPDF.Display" />
+
+                            <TextView
+                                android:id="@+id/streak_label"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:textAppearance="?attr/textAppearanceLabelMedium"
+                                android:textColor="?attr/colorOnSurfaceVariant" />
+                        </LinearLayout>
+
+                        <View
+                            android:layout_width="1dp"
+                            android:layout_height="80dp"
+                            android:layout_marginHorizontal="20dp"
+                            android:background="?attr/colorOutlineVariant" />
+
+                        <FrameLayout
+                            android:id="@+id/goal_box"
+                            android:layout_width="96dp"
+                            android:layout_height="96dp"
+                            android:background="?attr/selectableItemBackgroundBorderless"
+                            android:contentDescription="@string/goal_change">
+
+                            <com.google.android.material.progressindicator.CircularProgressIndicator
+                                android:id="@+id/goal_ring"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_gravity="center"
+                                android:max="1000"
+                                app:indicatorColor="?attr/colorSecondary"
+                                app:indicatorSize="92dp"
+                                app:trackColor="?attr/colorSurfaceContainerHighest"
+                                app:trackCornerRadius="4dp"
+                                app:trackThickness="8dp" />
+
+                            <LinearLayout
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_gravity="center"
+                                android:gravity="center_horizontal"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    android:id="@+id/goal_value"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:textAppearance="?attr/textAppearanceTitleMedium" />
+
+                                <TextView
+                                    android:id="@+id/goal_label"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:textAppearance="?attr/textAppearanceLabelSmall"
+                                    android:textColor="?attr/colorOnSurfaceVariant" />
+                            </LinearLayout>
+                        </FrameLayout>
+
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="16dp"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:id="@+id/today_title"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/today"
+                                android:textAppearance="@style/TextAppearance.EditorPDF.Overline" />
+
+                            <TextView
+                                android:id="@+id/today_detail"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="4dp"
+                                android:maxWidth="200dp"
+                                android:textAppearance="?attr/textAppearanceBodyMedium"
+                                android:textColor="?attr/colorOnSurfaceVariant" />
+                        </LinearLayout>
+
+                        <com.matias.editorpdf.view.WeekBarsView
+                            android:id="@+id/week_bars"
+                            android:layout_width="0dp"
+                            android:layout_height="96dp"
+                            android:layout_marginStart="24dp"
+                            android:layout_weight="1"
+                            android:contentDescription="@string/week_chart" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
 
                 <com.google.android.material.card.MaterialCardView
                     android:id="@+id/update_banner"

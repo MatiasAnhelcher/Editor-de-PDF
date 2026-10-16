@@ -25,4 +25,5 @@
     <color name="c_outline_variant">#CFCAC0</color>
     <color name="c_canvas">#E8E4DB</color>
     <color name="brand">#23345C</color>
+    <color name="splash_bg">#1A2440</color>
 </resources>
